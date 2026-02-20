@@ -37,6 +37,7 @@
 
 <script setup lang="ts">
 import type { AutomatonState } from '~/types/automaton'
+import { SimulationStatus } from '~/types/automaton'
 import { STATE_RADIUS } from '~/utils/geometry'
 import { useSelectionStore } from '~/stores/selection'
 import { useSimulationStore } from '~/stores/simulation'
@@ -54,16 +55,16 @@ const simulation = useSimulationStore()
 
 const isSelected = computed(() => selection.selectedStateId === props.state.id)
 const isSimCurrent = computed(
-  () => simulation.status !== 'idle' && simulation.currentStateId === props.state.id && simulation.status === 'running',
+  () => simulation.status !== SimulationStatus.Idle && simulation.currentStateId === props.state.id && simulation.status === SimulationStatus.Running,
 )
 const isSimAccepted = computed(
-  () => simulation.currentStateId === props.state.id && simulation.status === 'accepted',
+  () => simulation.currentStateId === props.state.id && simulation.status === SimulationStatus.Accepted,
 )
 const isSimRejected = computed(
-  () => simulation.currentStateId === props.state.id && simulation.status === 'rejected',
+  () => simulation.currentStateId === props.state.id && simulation.status === SimulationStatus.Rejected,
 )
 const isSimStuck = computed(
-  () => simulation.currentStateId === props.state.id && simulation.status === 'stuck',
+  () => simulation.currentStateId === props.state.id && simulation.status === SimulationStatus.Stuck,
 )
 
 const labelFontSize = computed(() => {

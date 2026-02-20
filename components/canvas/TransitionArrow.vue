@@ -37,6 +37,7 @@
 
 <script setup lang="ts">
 import type { Transition } from '~/types/automaton'
+import { SimulationStatus } from '~/types/automaton'
 import { useTransitionRouting } from '~/composables/useTransitionRouting'
 import { useSelectionStore } from '~/stores/selection'
 import { useSimulationStore } from '~/stores/simulation'
@@ -73,9 +74,9 @@ const isActive = computed(() =>
 )
 
 const isSimActive = computed(() => {
-  if (simulation.status === 'idle') return false
+  if (simulation.status === SimulationStatus.Idle) return false
   const lastEntry = simulation.history[simulation.history.length - 1]
-  return lastEntry?.transitionId !== null && transitionIds.value.has(lastEntry.transitionId)
+  return lastEntry?.transitionId != null && transitionIds.value.has(lastEntry.transitionId)
 })
 
 const markerUrl = computed(() => {
