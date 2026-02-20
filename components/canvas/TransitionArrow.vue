@@ -42,26 +42,40 @@ import { useSelectionStore } from '~/stores/selection'
 import { useSimulationStore } from '~/stores/simulation'
 
 const props = defineProps<{
-  transition: Transition
+  transitions: Transition[]
 }>()
 
 const { getTransitionPath } = useTransitionRouting()
 const selection = useSelectionStore()
 const simulation = useSimulationStore()
 
-const pathData = computed(() => getTransitionPath(props.transition))
+// Use the first transition for routing (all share the same sourceId/targetId)
+const representative = computed(() => props.transitions[0])
 
-const label = computed(() => props.transition.symbol)
+const pathData = computed(() => {
+  if (!representative.value) return null
+  return getTransitionPath(representative.value)
+})
+
+const label = computed(() =>
+  props.transitions
+    .map(t => t.symbol)
+    .filter(s => s.length > 0)
+    .join(',')
+)
 
 const labelWidth = computed(() => label.value.length * 7.5)
 
-const isActive = computed(() => selection.selectedTransitionId === props.transition.id)
+const transitionIds = computed(() => new Set(props.transitions.map(t => t.id)))
+
+const isActive = computed(() =>
+  selection.selectedTransitionId !== null && transitionIds.value.has(selection.selectedTransitionId)
+)
 
 const isSimActive = computed(() => {
   if (simulation.status === 'idle') return false
-  // Check if the last history entry used this transition
   const lastEntry = simulation.history[simulation.history.length - 1]
-  return lastEntry?.transitionId === props.transition.id
+  return lastEntry?.transitionId !== null && transitionIds.value.has(lastEntry.transitionId)
 })
 
 const markerUrl = computed(() => {

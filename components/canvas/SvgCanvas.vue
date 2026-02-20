@@ -78,9 +78,9 @@
 
       <!-- Transition arrows (below states) -->
       <TransitionArrow
-        v-for="t in automaton.transitions"
-        :key="t.id"
-        :transition="t"
+        v-for="group in transitionGroups"
+        :key="group.key"
+        :transitions="group.transitions"
       />
 
       <!-- Start arrow -->
@@ -105,6 +105,19 @@ import { useDragState } from '~/composables/useDragState'
 
 const automaton = useAutomatonStore()
 const selection = useSelectionStore()
+
+// Group transitions by (sourceId, targetId) for combined arrow rendering
+const transitionGroups = computed(() => {
+  const groups = new Map<string, { key: string; transitions: typeof automaton.transitions }>()
+  for (const t of automaton.transitions) {
+    const key = `${t.sourceId}->${t.targetId}`
+    if (!groups.has(key)) {
+      groups.set(key, { key, transitions: [] })
+    }
+    groups.get(key)!.transitions.push(t)
+  }
+  return [...groups.values()]
+})
 
 const svgRef = ref<SVGSVGElement | null>(null)
 const { viewBox, screenToWorld, onWheel, onPanStart, onPanMove, onPanEnd } =

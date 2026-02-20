@@ -21,49 +21,19 @@ export function useTransitionRouting() {
       return computeSelfLoopPath(source.position, STATE_RADIUS)
     }
 
-    // Normalize the pair so we can count all arrows between these two states
-    const [idA, idB] = transition.sourceId < transition.targetId
-      ? [transition.sourceId, transition.targetId]
-      : [transition.targetId, transition.sourceId]
-
-    // Count forward (A→B) and reverse (B→A) transitions
-    const forwardTransitions = automaton.transitions.filter(
-      t => t.sourceId === idA && t.targetId === idB,
-    )
-    const reverseTransitions = automaton.transitions.filter(
-      t => t.sourceId === idB && t.targetId === idA,
+    // Check if a reverse direction exists
+    const hasReverse = automaton.transitions.some(
+      t => t.sourceId === transition.targetId && t.targetId === transition.sourceId,
     )
 
-    const isForward = transition.sourceId === idA
-    const myGroup = isForward ? forwardTransitions : reverseTransitions
-    const otherGroup = isForward ? reverseTransitions : forwardTransitions
-    const myIndex = myGroup.findIndex(t => t.id === transition.id)
-
-    const totalArrows = forwardTransitions.length + reverseTransitions.length
-
-    // Single arrow — straight line
-    if (totalArrows === 1) {
+    if (!hasReverse) {
       return computeStraightPath(source.position, target.position, STATE_RADIUS)
     }
 
-    const baseOffset = 0.5
-
-    // Same-direction only: fan out symmetrically around the straight line
-    if (otherGroup.length === 0) {
-      const n = myGroup.length
-      const centered = (myIndex - (n - 1) / 2) * baseOffset
-      if (centered === 0) {
-        return computeStraightPath(source.position, target.position, STATE_RADIUS)
-      }
-      const dir = centered > 0 ? 1 : -1
-      return computeCurvedPath(source.position, target.position, STATE_RADIUS, dir, Math.abs(centered))
-    }
-
-    // Bidirectional: all arrows use curveDirection=1.
+    // Bidirectional: curve with direction=1.
     // The perpendicular naturally flips when source/target swap,
-    // so forward and reverse arrows curve to opposite sides.
-    const magnitude = (myIndex + 1) * baseOffset
-    return computeCurvedPath(source.position, target.position, STATE_RADIUS, 1, magnitude)
+    // so opposite directions curve to opposite sides.
+    return computeCurvedPath(source.position, target.position, STATE_RADIUS, 1, 0.5)
   }
 
   return { getTransitionPath }
