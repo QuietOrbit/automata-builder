@@ -712,3 +712,170 @@ body {
   color: var(--color-text-primary);
   font-weight: 500;
 }
+
+/* ========================================
+   Tuple Builder
+   ======================================== */
+
+.tuple-builder {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-bottom: 1px solid var(--color-panel-border);
+}
+
+.tuple-type-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.tuple-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.tuple-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tuple-checkbox input[type="checkbox"] {
+  accent-color: var(--color-button-bg);
+}
+
+/* --- Transition table --- */
+
+.tuple-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--color-input-border);
+  border-radius: 6px;
+}
+
+.tuple-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.tuple-table th,
+.tuple-table td {
+  padding: 4px 6px;
+  border: 1px solid var(--color-input-border);
+  text-align: center;
+}
+
+.tuple-table thead th {
+  background: var(--color-panel-bg);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+}
+
+.tuple-table-corner {
+  width: 50px;
+}
+
+.tuple-table-row-header {
+  background: var(--color-panel-bg);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  text-align: left !important;
+  white-space: nowrap;
+}
+
+.tuple-table-cell {
+  padding: 2px !important;
+}
+
+.tuple-cell-select {
+  width: 100%;
+  padding: 3px 4px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  text-align: center;
+  cursor: pointer;
+  outline: none;
+}
+
+.tuple-cell-select:focus {
+  background: var(--color-input-bg);
+}
+
+.tuple-cell-multi {
+  cursor: pointer;
+  padding: 3px 4px;
+  border-radius: 3px;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tuple-cell-multi:hover {
+  background: var(--color-panel-border);
+}
+
+.tuple-cell-multi-text {
+  font-size: 11px;
+  color: var(--color-text-primary);
+}
+
+/* --- NFA dropdown --- */
+
+.tuple-dropdown-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+.tuple-dropdown {
+  position: fixed;
+  z-index: 100;
+  background: var(--color-panel-bg);
+  border: 1px solid var(--color-input-border);
+  border-radius: 6px;
+  padding: 4px 0;
+  box-shadow: var(--shadow-md);
+  min-width: 100px;
+}
+
+.tuple-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tuple-dropdown-item:hover {
+  background: var(--color-panel-border);
+}
+
+.tuple-dropdown-item input[type="checkbox"] {
+  accent-color: var(--color-button-bg);
+}
+
+/* --- Validation error --- */
+
+.tuple-error {
+  font-size: 12px;
+  color: var(--color-button-danger);
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--color-button-danger) 10%, var(--color-panel-bg));
+  border-radius: 6px;
+}

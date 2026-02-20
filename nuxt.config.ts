@@ -3,6 +3,10 @@ export default defineNuxtConfig({
   ssr: false,
   devtools: { enabled: true },
 
+  experimental: {
+    appManifest: false,
+  },
+
   app: {
     baseURL: '/automata-builder/',
     head: {

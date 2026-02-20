@@ -3,9 +3,21 @@ import type {
   Automaton,
   AutomatonExport,
   AutomatonState,
+  AutomatonType,
   Position,
   Transition,
 } from '~/types/automaton'
+
+export interface TupleData {
+  name?: string
+  type: AutomatonType
+  states: string[]
+  alphabet: string[]
+  startState: string
+  acceptStates: string[]
+  /** transitions[sourceName][symbol] = array of target state names */
+  transitions: Record<string, Record<string, string[]>>
+}
 import { createId } from '~/utils/ids'
 
 export const useAutomatonStore = defineStore('automaton', {
@@ -118,6 +130,58 @@ export const useAutomatonStore = defineStore('automaton', {
       if (transition) {
         transition.targetId = targetId
       }
+    },
+
+    buildFromTuple(data: TupleData) {
+      // Compute all data upfront before mutating store
+      const count = data.states.length
+      const radius = Math.max(150, (80 * count) / Math.PI)
+      const nameToId = new Map<string, string>()
+      const states: AutomatonState[] = []
+      const transitions: Transition[] = []
+
+      for (let i = 0; i < count; i++) {
+        const angle = -Math.PI / 2 + (2 * Math.PI * i) / count
+        const state: AutomatonState = {
+          id: createId(),
+          name: data.states[i],
+          position: {
+            x: Math.round(radius * Math.cos(angle)),
+            y: Math.round(radius * Math.sin(angle)),
+          },
+          isStart: data.states[i] === data.startState,
+          isAccept: data.acceptStates.includes(data.states[i]),
+        }
+        states.push(state)
+        nameToId.set(data.states[i], state.id)
+      }
+
+      for (const [sourceName, symbolMap] of Object.entries(data.transitions)) {
+        const sourceId = nameToId.get(sourceName)
+        if (!sourceId) continue
+        for (const [symbol, targets] of Object.entries(symbolMap)) {
+          for (const targetName of targets) {
+            const targetId = nameToId.get(targetName)
+            if (!targetId) continue
+            transitions.push({
+              id: createId(),
+              sourceId,
+              targetId,
+              symbol,
+            })
+          }
+        }
+      }
+
+      // Apply all at once so Vue renders only the final state
+      this.$patch({
+        id: createId(),
+        name: data.name || `Untitled ${data.type}`,
+        type: data.type,
+        alphabet: [...data.alphabet],
+        states,
+        transitions,
+      })
     },
 
     clear() {

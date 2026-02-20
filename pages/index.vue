@@ -3,10 +3,7 @@
     <SvgCanvas class="canvas-area" />
     <aside class="side-panel">
       <StateEditor v-if="selection.selectedStateId" />
-      <div v-else class="panel-empty">
-        <p>Double-click the canvas to add a state.</p>
-        <p>Click a state to select and edit it.</p>
-      </div>
+      <TupleBuilder v-else />
       <SimulationPanel />
     </aside>
   </div>
