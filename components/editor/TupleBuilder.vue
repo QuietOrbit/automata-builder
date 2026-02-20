@@ -206,6 +206,12 @@ watch(
   { immediate: true },
 )
 
+// Keep the store name in sync whenever the user edits the name field
+watch(nameInput, (value) => {
+  automaton.name = value.trim() || `Untitled ${automaton.type}`
+})
+
+
 /** Split the comma-separated states input into trimmed, non-empty names. */
 const parsedStates = computed(() => {
   return statesInput.value
