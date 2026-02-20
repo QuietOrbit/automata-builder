@@ -3,6 +3,10 @@ export default defineNuxtConfig({
   ssr: false,
   devtools: { enabled: true },
 
+  experimental: {
+    appManifest: false,
+  },
+
   app: {
     baseURL: '/automata-builder/',
     head: {
@@ -11,6 +15,8 @@ export default defineNuxtConfig({
         { name: 'description', content: 'Visual DFA builder and tester' },
       ],
       link: [
+        { rel: 'icon', type: 'image/svg+xml', href: '/automata-builder/favicon.svg' },
+        { rel: 'icon', type: 'image/x-icon', href: '/automata-builder/favicon.ico' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         {

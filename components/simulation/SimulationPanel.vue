@@ -22,9 +22,9 @@
         :key="i"
         class="input-char"
         :class="{
-          current: i === sim.currentIndex && sim.status === 'running',
+          current: i === sim.currentIndex && sim.status === SimulationStatus.Running,
           consumed: i < sim.currentIndex,
-          remaining: i > sim.currentIndex || sim.status !== 'running',
+          remaining: i > sim.currentIndex || sim.status !== SimulationStatus.Running,
         }"
       >
         {{ ch }}
@@ -64,7 +64,7 @@
 
       <button
         class="btn btn-ghost"
-        :disabled="sim.status === 'idle'"
+        :disabled="sim.status === SimulationStatus.Idle"
         @click="reset"
         title="Reset"
       >
@@ -73,11 +73,11 @@
     </div>
 
     <!-- Status -->
-    <div v-if="sim.status !== 'idle'" class="status" :class="{
-      'status-running': sim.status === 'running',
-      'status-accepted': sim.status === 'accepted',
-      'status-rejected': sim.status === 'rejected',
-      'status-stuck': sim.status === 'stuck',
+    <div v-if="sim.status !== SimulationStatus.Idle" class="status" :class="{
+      'status-running': sim.status === SimulationStatus.Running,
+      'status-accepted': sim.status === SimulationStatus.Accepted,
+      'status-rejected': sim.status === SimulationStatus.Rejected,
+      'status-stuck': sim.status === SimulationStatus.Stuck,
     }">
       <span class="status-dot"></span>
       <span class="status-text">{{ statusText }}</span>
@@ -89,7 +89,7 @@
       <span class="info-value mono">{{ currentStateName }}</span>
     </div>
 
-    <div v-if="sim.status !== 'idle'" class="info-row">
+    <div v-if="sim.status !== SimulationStatus.Idle" class="info-row">
       <span class="info-label">Position:</span>
       <span class="info-value mono">{{ sim.currentIndex }} / {{ sim.input.length }}</span>
     </div>
@@ -97,6 +97,7 @@
 </template>
 
 <script setup lang="ts">
+import { SimulationStatus } from '~/types/automaton'
 import { useSimulationStore } from '~/stores/simulation'
 import { useAutomatonStore } from '~/stores/automaton'
 
@@ -110,13 +111,13 @@ const currentStateName = computed(() => {
 
 const statusText = computed(() => {
   switch (sim.status) {
-    case 'running':
+    case SimulationStatus.Running:
       return 'Running'
-    case 'accepted':
+    case SimulationStatus.Accepted:
       return 'Accepted'
-    case 'rejected':
+    case SimulationStatus.Rejected:
       return 'Rejected'
-    case 'stuck':
+    case SimulationStatus.Stuck:
       return 'Stuck (no transition)'
     default:
       return ''
