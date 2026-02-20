@@ -97,9 +97,12 @@ function toggleAccept() {
 
 function addTransition() {
   if (!selection.selectedStateId) return
-  // Default: self-loop with empty symbols (user will edit)
-  const targetId = selection.selectedStateId
-  automaton.addTransition(selection.selectedStateId, targetId, [])
+  const sourceId = selection.selectedStateId
+  // Pick the first state that doesn't already have a transition from this source
+  const existingTargetIds = new Set(transitions.value.map(t => t.targetId))
+  const available = automaton.states.find(s => !existingTargetIds.has(s.id))
+  if (!available) return // all states already have transitions from this source
+  automaton.addTransition(sourceId, available.id, [])
 }
 
 function deleteState() {
