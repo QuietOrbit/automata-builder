@@ -833,6 +833,19 @@ body {
   color: var(--color-text-primary);
 }
 
+/* --- Export dropdown --- */
+
+.export-wrapper {
+  position: relative;
+}
+
+.export-format-hint {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  margin-left: auto;
+  padding-left: 12px;
+}
+
 /* --- NFA dropdown --- */
 
 .tuple-dropdown-backdrop {

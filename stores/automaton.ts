@@ -124,6 +124,11 @@ function buildTransitions(
   return transitions
 }
 
+/**
+ * Central store for the automaton's data model.
+ * Manages CRUD operations for states, transitions, and alphabet, as well as
+ * JSON import/export and construction from a formal 5-tuple definition.
+ */
 export const useAutomatonStore = defineStore('automaton', {
   state: (): Automaton => ({
     id: createId(),

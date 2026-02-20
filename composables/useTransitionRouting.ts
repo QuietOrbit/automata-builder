@@ -8,9 +8,20 @@ import {
   type TransitionPath,
 } from '~/utils/geometry'
 
+/**
+ * Composable that computes SVG arrow geometry for transitions.
+ * Selects the appropriate path strategy based on the transition type:
+ * self-loops get an arc, unidirectional edges get a straight line,
+ * and bidirectional edges get a curved path to avoid overlap.
+ */
 export function useTransitionRouting() {
   const automaton = useAutomatonStore()
 
+  /**
+   * Compute the SVG path data and label position for a transition arrow.
+   * Returns null if either the source or target state cannot be found.
+   * @param transition - The transition to compute a path for.
+   */
   function getTransitionPath(transition: Transition): TransitionPath | null {
     const source = automaton.getState(transition.sourceId)
     const target = automaton.getState(transition.targetId)
