@@ -158,6 +158,55 @@ const acceptStates = ref(new Set<string>())
 // transitions[sourceName][symbol] = Set of target names
 const transitions = ref(new Map<string, Map<string, Set<string>>>())
 
+/**
+ * Sync all local tuple fields from the current automaton store.
+ *
+ * Reads states, alphabet, start/accept flags, and transitions from the
+ * Pinia store and writes them into the component's local refs. Called on
+ * mount and reactively whenever the store changes.
+ */
+function populateFromStore() {
+  if (automaton.states.length === 0) return
+
+  nameInput.value = automaton.name
+  type.value = automaton.type
+  statesInput.value = automaton.states.map(s => s.name).join(', ')
+  alphabetInput.value = automaton.alphabet.join(', ')
+
+  const start = automaton.states.find(s => s.isStart)
+  startState.value = start?.name ?? ''
+
+  acceptStates.value = new Set(
+    automaton.states.filter(s => s.isAccept).map(s => s.name),
+  )
+
+  const newTransitions = new Map<string, Map<string, Set<string>>>()
+  for (const t of automaton.transitions) {
+    const sourceName = automaton.states.find(s => s.id === t.sourceId)?.name
+    const targetName = automaton.states.find(s => s.id === t.targetId)?.name
+    if (!sourceName || !targetName) continue
+
+    if (!newTransitions.has(sourceName)) {
+      newTransitions.set(sourceName, new Map())
+    }
+    const symbolMap = newTransitions.get(sourceName)!
+    if (!symbolMap.has(t.symbol)) {
+      symbolMap.set(t.symbol, new Set())
+    }
+    symbolMap.get(t.symbol)!.add(targetName)
+  }
+  transitions.value = newTransitions
+}
+
+// Re-sync from store on mount and whenever the automaton changes
+// (covers both buildFromTuple and direct canvas edits like deleting a transition).
+watch(
+  () => [automaton.id, automaton.states, automaton.transitions] as const,
+  populateFromStore,
+  { immediate: true },
+)
+
+/** Split the comma-separated states input into trimmed, non-empty names. */
 const parsedStates = computed(() => {
   return statesInput.value
     .split(',')
@@ -165,6 +214,7 @@ const parsedStates = computed(() => {
     .filter(s => s.length > 0)
 })
 
+/** Split the comma-separated alphabet input into trimmed, non-empty symbols. */
 const parsedAlphabet = computed(() => {
   return alphabetInput.value
     .split(',')
@@ -172,6 +222,7 @@ const parsedAlphabet = computed(() => {
     .filter(s => s.length > 0)
 })
 
+/** Columns for the transition table: alphabet symbols, plus ε for NFA mode. */
 const tableColumns = computed(() => {
   const cols = [...parsedAlphabet.value]
   if (type.value === 'NFA') cols.push('ε')
@@ -191,6 +242,7 @@ watch(parsedStates, (states) => {
   }
 })
 
+/** Toggle a state's membership in the accept states set. */
 function toggleAccept(name: string) {
   if (acceptStates.value.has(name)) {
     acceptStates.value.delete(name)
@@ -201,6 +253,10 @@ function toggleAccept(name: string) {
 
 // --- Transition table helpers ---
 
+/**
+ * Lazily initialise the nested Map/Set structure for a given (state, symbol)
+ * cell and return the target Set.
+ */
 function ensureTransitionEntry(state: string, symbol: string): Set<string> {
   if (!transitions.value.has(state)) {
     transitions.value.set(state, new Map())
@@ -212,28 +268,33 @@ function ensureTransitionEntry(state: string, symbol: string): Set<string> {
   return stateMap.get(symbol)!
 }
 
+/** Get the single DFA target for a (state, symbol) cell, or empty string if unset. */
 function getTransitionTarget(state: string, symbol: string): string {
   const targets = transitions.value.get(state)?.get(symbol)
   if (!targets || targets.size === 0) return ''
   return [...targets][0]
 }
 
+/** Set the DFA transition for a cell to exactly one target (or clear it). */
 function setDFATransition(state: string, symbol: string, target: string) {
   const set = ensureTransitionEntry(state, symbol)
   set.clear()
   if (target) set.add(target)
 }
 
+/** Format the NFA target set for display, e.g. `{q1,q2}` or `-` if empty. */
 function getNFADisplay(state: string, symbol: string): string {
   const targets = transitions.value.get(state)?.get(symbol)
   if (!targets || targets.size === 0) return '-'
   return `{${[...targets].join(',')}}`
 }
 
+/** Check whether a specific target is in the NFA target set for a cell. */
 function hasNFATarget(state: string, symbol: string, target: string): boolean {
   return transitions.value.get(state)?.get(symbol)?.has(target) ?? false
 }
 
+/** Add or remove a target from the NFA target set for a cell. */
 function toggleNFATarget(state: string, symbol: string, target: string) {
   const set = ensureTransitionEntry(state, symbol)
   if (set.has(target)) {
@@ -245,6 +306,7 @@ function toggleNFATarget(state: string, symbol: string, target: string) {
 
 // --- NFA dropdown state ---
 
+/** Tracks the open/close state and screen position of the NFA multi-select dropdown. */
 const dropdown = ref({
   open: false,
   state: '',
@@ -253,6 +315,7 @@ const dropdown = ref({
   y: 0,
 })
 
+/** Open the NFA multi-select dropdown anchored below the clicked cell. */
 function openDropdown(state: string, symbol: string, event: MouseEvent) {
   const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
   dropdown.value = {
@@ -264,6 +327,7 @@ function openDropdown(state: string, symbol: string, event: MouseEvent) {
   }
 }
 
+/** Close the NFA multi-select dropdown. */
 function closeDropdown() {
   dropdown.value.open = false
 }
@@ -272,6 +336,15 @@ function closeDropdown() {
 
 const validationError = ref('')
 
+/**
+ * Validate all tuple fields before building.
+ *
+ * Checks that Q is non-empty, Σ is non-empty, q₀ is a member of Q,
+ * and every accept state is a member of Q. Sets {@link validationError}
+ * on failure.
+ *
+ * @returns `true` if the tuple is valid and ready to build.
+ */
 function validate(): boolean {
   const states = parsedStates.value
   const alphabet = parsedAlphabet.value
@@ -300,6 +373,12 @@ function validate(): boolean {
 
 // --- Build ---
 
+/**
+ * Validate inputs, convert local state to {@link TupleData}, and call
+ * the store's `buildFromTuple` to replace the current automaton.
+ *
+ * Clears the active selection and resets the simulation after building.
+ */
 function build() {
   if (!validate()) return
 
