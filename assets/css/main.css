@@ -1,5 +1,5 @@
 /* ========================================
-   Automata Builder - Theme & Global Styles
+   Automata Builder - Global Styles
    ======================================== */
 
 /* --- Reset --- */
@@ -58,8 +58,8 @@
   --header-height: 48px;
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 5%);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 10%);
 }
 
 /* --- Dark Theme --- */
@@ -95,15 +95,16 @@
   --color-button-hover: #4f46e5;
   --color-button-danger-hover: #ef4444;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 30%);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 40%);
 }
 
 /* --- Base styles --- */
-html, body {
+html,
+body {
   height: 100%;
   overflow: hidden;
-  font-family: var(--font-sans);
+  font-family: var(--font-sans), sans-serif;
   color: var(--color-text-primary);
   background: var(--color-bg);
   -webkit-font-smoothing: antialiased;
@@ -114,6 +115,28 @@ html, body {
   height: 100%;
 }
 
+/* --- Scrollbar --- */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-input-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
+/* ========================================
+   Shared UI Components
+   ======================================== */
+
 /* --- Buttons --- */
 .btn {
   display: inline-flex;
@@ -123,7 +146,7 @@ html, body {
   padding: 6px 12px;
   border: none;
   border-radius: 6px;
-  font-family: var(--font-sans);
+  font-family: var(--font-sans), sans-serif;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -165,42 +188,48 @@ html, body {
   background: var(--color-panel-border);
 }
 
-/* --- Inputs --- */
-.input {
-  padding: 6px 10px;
-  border: 1px solid var(--color-input-border);
-  border-radius: 6px;
-  background: var(--color-input-bg);
-  color: var(--color-text-primary);
-  font-family: var(--font-sans);
-  font-size: 13px;
-  outline: none;
-  transition: border-color 0.15s;
+.btn-sm {
+  font-size: 11px;
+  padding: 3px 8px;
 }
 
-.input:focus {
-  border-color: var(--color-button-bg);
+.btn-full {
+  width: 100%;
 }
 
-.input-mono {
-  font-family: var(--font-mono);
+.btn-icon {
+  padding: 4px;
+  flex-shrink: 0;
 }
 
-/* --- Select --- */
+/* --- Inputs & Selects --- */
+.input,
 .select {
   padding: 6px 10px;
   border: 1px solid var(--color-input-border);
   border-radius: 6px;
   background: var(--color-input-bg);
   color: var(--color-text-primary);
-  font-family: var(--font-sans);
+  font-family: var(--font-sans), sans-serif;
   font-size: 13px;
   outline: none;
+}
+
+.input:focus,
+.select:focus {
+  border-color: var(--color-button-bg);
+}
+
+.input {
+  transition: border-color 0.15s;
+}
+
+.select {
   cursor: pointer;
 }
 
-.select:focus {
-  border-color: var(--color-button-bg);
+.input-mono {
+  font-family: var(--font-mono), monospace;
 }
 
 /* --- Toggle Switch --- */
@@ -235,20 +264,451 @@ html, body {
   transform: translateX(16px);
 }
 
-/* --- Scrollbar --- */
-::-webkit-scrollbar {
-  width: 6px;
+/* --- Shared field styles --- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-::-webkit-scrollbar-track {
+.field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.field-row {
+  display: flex;
+  gap: 16px;
+}
+
+.mono {
+  font-family: var(--font-mono), monospace;
+}
+
+/* ========================================
+   Layout
+   ======================================== */
+
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* --- Workspace (index page) --- */
+.workspace {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.canvas-area {
+  flex: 1;
+  min-width: 0;
+}
+
+.side-panel {
+  width: var(--panel-width);
+  flex-shrink: 0;
+  border-left: 1px solid var(--color-panel-border);
+  background: var(--color-panel-bg);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.panel-empty {
+  padding: 20px 16px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* ========================================
+   App Header
+   ======================================== */
+
+.app-header {
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--color-panel-border);
+  background: var(--color-panel-bg);
+  flex-shrink: 0;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.app-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--color-button-bg);
+  color: var(--color-button-text);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* --- Theme toggle --- */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
   background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
 }
 
-::-webkit-scrollbar-thumb {
-  background: var(--color-input-border);
-  border-radius: 3px;
+.theme-toggle:hover {
+  color: var(--color-text-primary);
+  background: var(--color-panel-border);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-secondary);
+/* ========================================
+   SVG Canvas
+   ======================================== */
+
+.svg-canvas-wrapper {
+  width: 100%;
+  height: 100%;
+  outline: none;
+  overflow: hidden;
+  cursor: grab;
+}
+
+.svg-canvas-wrapper:active {
+  cursor: grabbing;
+}
+
+.svg-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ========================================
+   State Nodes (SVG)
+   ======================================== */
+
+.state-circle {
+  fill: var(--color-state-fill);
+  stroke: var(--color-state-stroke);
+  stroke-width: 2;
+  transition: stroke 0.15s, fill 0.15s;
+}
+
+.accept-ring {
+  fill: none;
+  stroke: var(--color-state-accept-ring);
+  stroke-width: 2;
+  transition: stroke 0.15s;
+}
+
+.state-label {
+  fill: var(--color-state-text);
+  font-family: var(--font-mono), monospace;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Selected state */
+.selected .state-circle {
+  stroke: var(--color-state-selected);
+  stroke-width: 2.5;
+}
+
+.selected .accept-ring {
+  stroke: var(--color-state-selected);
+}
+
+/* Simulation states */
+.is-current,
+.is-accepted,
+.is-rejected,
+.is-stuck {
+  --sim-color: var(--color-sim-current);
+}
+
+.is-accepted { --sim-color: var(--color-sim-accepted); }
+.is-rejected { --sim-color: var(--color-sim-rejected); }
+.is-stuck { --sim-color: var(--color-sim-stuck); }
+
+.is-current .state-circle,
+.is-accepted .state-circle,
+.is-rejected .state-circle,
+.is-stuck .state-circle {
+  stroke: var(--sim-color);
+  stroke-width: 3;
+}
+
+.is-accepted .state-circle,
+.is-rejected .state-circle,
+.is-stuck .state-circle {
+  fill: color-mix(in srgb, var(--sim-color) 15%, var(--color-state-fill));
+}
+
+.is-current .accept-ring,
+.is-accepted .accept-ring,
+.is-rejected .accept-ring,
+.is-stuck .accept-ring {
+  stroke: var(--sim-color);
+}
+
+/* ========================================
+   Transition Arrows (SVG)
+   ======================================== */
+
+.arrow-path {
+  stroke: var(--color-transition-stroke);
+  transition: stroke 0.15s;
+}
+
+.label-bg {
+  fill: var(--color-bg);
+  opacity: 0.85;
+}
+
+.label-text {
+  fill: var(--color-transition-text);
+  font-family: var(--font-mono), monospace;
+  pointer-events: none;
+  user-select: none;
+}
+
+.active .arrow-path {
+  stroke: var(--color-transition-active);
+  stroke-width: 2.5;
+}
+
+.active .label-text {
+  fill: var(--color-transition-active);
+}
+
+.sim-active .arrow-path {
+  stroke: var(--color-sim-current);
+  stroke-width: 2.5;
+}
+
+.sim-active .label-text {
+  fill: var(--color-sim-current);
+}
+
+/* ========================================
+   State Editor
+   ======================================== */
+
+.state-editor {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-bottom: 1px solid var(--color-panel-border);
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.editor-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.toggle-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.transitions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.transitions-empty {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  padding: 8px 0;
+}
+
+.transitions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ========================================
+   Transition Editor
+   ======================================== */
+
+.transition-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.target-select {
+  flex: 0 0 80px;
+  font-size: 12px;
+  padding: 4px 6px;
+}
+
+.symbols-input {
+  flex: 1;
+  font-size: 12px;
+  padding: 4px 6px;
+  min-width: 0;
+}
+
+/* ========================================
+   Simulation Panel
+   ======================================== */
+
+.simulation-panel {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.panel-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* Input visualization */
+.input-viz {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  font-family: var(--font-mono), monospace;
+  font-size: 16px;
+}
+
+.input-char {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 28px;
+  border-radius: 4px;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.input-char.consumed {
+  background: var(--color-panel-border);
+  color: var(--color-text-secondary);
+}
+
+.input-char.current {
+  background: var(--color-button-bg);
+  color: white;
+  font-weight: 600;
+}
+
+.input-char.remaining {
+  background: var(--color-input-bg);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-input-border);
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  gap: 6px;
+}
+
+/* Status */
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-running,
+.status-accepted,
+.status-rejected,
+.status-stuck {
+  background: color-mix(in srgb, var(--status-color) 15%, var(--color-panel-bg));
+  color: var(--status-color);
+}
+
+.status-running .status-dot,
+.status-accepted .status-dot,
+.status-rejected .status-dot,
+.status-stuck .status-dot {
+  background: var(--status-color);
+}
+
+.status-running { --status-color: var(--color-button-bg); }
+.status-accepted { --status-color: var(--color-sim-accepted); }
+.status-rejected { --status-color: var(--color-sim-rejected); }
+.status-stuck { --status-color: var(--color-sim-stuck); }
+
+/* Info rows */
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.info-label {
+  color: var(--color-text-secondary);
+}
+
+.info-value {
+  color: var(--color-text-primary);
+  font-weight: 500;
 }

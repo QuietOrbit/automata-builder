@@ -1,4 +1,4 @@
-import type { Position } from '~/types/automaton'
+import type {Position} from '~/types/automaton'
 
 // --- Constants ---
 export const STATE_RADIUS = 30
@@ -23,7 +23,7 @@ export function scale(v: Position, s: number): Position {
 }
 
 export function length(v: Position): number {
-  return Math.sqrt(v.x * v.x + v.y * v.y)
+  return Math.hypot(v.x, v.y)
 }
 
 export function normalize(v: Position): Position {
@@ -33,11 +33,12 @@ export function normalize(v: Position): Position {
 }
 
 export function perpendicular(v: Position): Position {
+  // 90-degree rotation: (x, y) -> (-y, x) — NOSONAR: cross-assignment is intentional
   return { x: -v.y, y: v.x }
 }
 
-export function distance(a: Position, b: Position): number {
-  return length(subtract(b, a))
+export function distance(from: Position, to: Position): number {
+  return length(subtract(to, from))
 }
 
 export function midpoint(a: Position, b: Position): Position {
@@ -89,10 +90,7 @@ export function computeSelfLoopPath(center: Position, radius: number): Transitio
   const end = circlePointAtAngle(center, radius, angleRight)
 
   // Self-loop arc parameters
-  const rx = SELF_LOOP_RADIUS
-  const ry = SELF_LOOP_RADIUS
-
-  const path = `M ${start.x} ${start.y} A ${rx} ${ry} 0 1 1 ${end.x} ${end.y}`
+  const path = `M ${start.x} ${start.y} A ${SELF_LOOP_RADIUS} ${SELF_LOOP_RADIUS} 0 1 1 ${end.x} ${end.y}`
 
   const labelPosition = {
     x: center.x,

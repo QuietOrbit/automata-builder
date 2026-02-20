@@ -1,9 +1,8 @@
 import { defineStore } from 'pinia'
-import type { StateId, TransitionId } from '~/types/automaton'
 
 interface SelectionState {
-  selectedStateId: StateId | null
-  selectedTransitionId: TransitionId | null
+  selectedStateId: string | null
+  selectedTransitionId: string | null
 }
 
 export const useSelectionStore = defineStore('selection', {
@@ -13,14 +12,9 @@ export const useSelectionStore = defineStore('selection', {
   }),
 
   actions: {
-    selectState(id: StateId) {
+    selectState(id: string) {
       this.selectedStateId = id
       this.selectedTransitionId = null
-    },
-
-    selectTransition(id: TransitionId) {
-      this.selectedTransitionId = id
-      this.selectedStateId = null
     },
 
     clearSelection() {

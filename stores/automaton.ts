@@ -4,9 +4,7 @@ import type {
   AutomatonExport,
   AutomatonState,
   Position,
-  StateId,
   Transition,
-  TransitionId,
 } from '~/types/automaton'
 import { createId } from '~/utils/ids'
 
@@ -26,34 +24,34 @@ export const useAutomatonStore = defineStore('automaton', {
     },
 
     getState() {
-      return (id: StateId): AutomatonState | undefined => {
+      return (id: string): AutomatonState | undefined => {
         return this.states.find(s => s.id === id)
       }
     },
 
     getTransitionsFrom() {
-      return (stateId: StateId): Transition[] => {
+      return (stateId: string): Transition[] => {
         return this.transitions.filter(t => t.sourceId === stateId)
       }
     },
 
     getTransitionBetween() {
-      return (sourceId: StateId, targetId: StateId): Transition | undefined => {
+      return (sourceId: string, targetId: string): Transition | undefined => {
         return this.transitions.find(t => t.sourceId === sourceId && t.targetId === targetId)
       }
     },
 
     /** Check if a reverse transition exists (target -> source) */
     hasBidirectional() {
-      return (sourceId: StateId, targetId: StateId): boolean => {
+      return (sourceId: string, targetId: string): boolean => {
         return this.transitions.some(t => t.sourceId === targetId && t.targetId === sourceId)
       }
     },
 
     nextStateName(): string {
       const existing = this.states.map((s) => {
-        const match = s.name.match(/^q(\d+)$/)
-        return match ? parseInt(match[1]) : -1
+        const match = new RegExp(/^q(\d+)$/).exec(s.name)
+        return match ? Number.parseInt(match[1]) : -1
       })
       const max = existing.length > 0 ? Math.max(...existing) : -1
       return `q${max + 1}`
@@ -74,26 +72,26 @@ export const useAutomatonStore = defineStore('automaton', {
       return state
     },
 
-    removeState(id: StateId) {
+    removeState(id: string) {
       this.states = this.states.filter(s => s.id !== id)
       this.transitions = this.transitions.filter(
         t => t.sourceId !== id && t.targetId !== id,
       )
     },
 
-    updateState(id: StateId, updates: Partial<Pick<AutomatonState, 'name' | 'position' | 'isAccept'>>) {
+    updateState(id: string, updates: Partial<Pick<AutomatonState, 'name' | 'position' | 'isAccept'>>) {
       const state = this.states.find(s => s.id === id)
       if (!state) return
       Object.assign(state, updates)
     },
 
-    setStartState(id: StateId) {
+    setStartState(id: string) {
       for (const s of this.states) {
         s.isStart = s.id === id
       }
     },
 
-    addTransition(sourceId: StateId, targetId: StateId, symbol: string): Transition {
+    addTransition(sourceId: string, targetId: string, symbol: string): Transition {
       const transition: Transition = {
         id: createId(),
         sourceId,
@@ -104,26 +102,22 @@ export const useAutomatonStore = defineStore('automaton', {
       return transition
     },
 
-    removeTransition(id: TransitionId) {
+    removeTransition(id: string) {
       this.transitions = this.transitions.filter(t => t.id !== id)
     },
 
-    updateTransitionSymbol(id: TransitionId, symbol: string) {
+    updateTransitionSymbol(id: string, symbol: string) {
       const transition = this.transitions.find(t => t.id === id)
       if (transition) {
         transition.symbol = symbol
       }
     },
 
-    updateTransitionTarget(id: TransitionId, targetId: StateId) {
+    updateTransitionTarget(id: string, targetId: string) {
       const transition = this.transitions.find(t => t.id === id)
       if (transition) {
         transition.targetId = targetId
       }
-    },
-
-    setAlphabet(symbols: string[]) {
-      this.alphabet = symbols
     },
 
     clear() {

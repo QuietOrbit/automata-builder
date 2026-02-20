@@ -4,8 +4,9 @@
 
     <!-- Input string -->
     <div class="field">
-      <label class="field-label">Input String</label>
+      <label class="field-label" for="sim-input-string">Input String</label>
       <input
+        id="sim-input-string"
         class="input input-mono"
         :value="sim.input"
         @input="onInputChange"
@@ -72,7 +73,12 @@
     </div>
 
     <!-- Status -->
-    <div v-if="sim.status !== 'idle'" class="status" :class="statusClass">
+    <div v-if="sim.status !== 'idle'" class="status" :class="{
+      'status-running': sim.status === 'running',
+      'status-accepted': sim.status === 'accepted',
+      'status-rejected': sim.status === 'rejected',
+      'status-stuck': sim.status === 'stuck',
+    }">
       <span class="status-dot"></span>
       <span class="status-text">{{ statusText }}</span>
     </div>
@@ -117,8 +123,6 @@ const statusText = computed(() => {
   }
 })
 
-const statusClass = computed(() => `status-${sim.status}`)
-
 function onInputChange(event: Event) {
   const input = (event.target as HTMLInputElement).value
   sim.setInput(input)
@@ -140,144 +144,3 @@ function reset() {
   sim.reset()
 }
 </script>
-
-<style scoped>
-.simulation-panel {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.panel-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.field-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-/* Input visualization */
-.input-viz {
-  display: flex;
-  gap: 2px;
-  flex-wrap: wrap;
-  font-family: var(--font-mono);
-  font-size: 16px;
-}
-
-.input-char {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 28px;
-  border-radius: 4px;
-  transition: background-color 0.15s, color 0.15s;
-}
-
-.input-char.consumed {
-  background: var(--color-panel-border);
-  color: var(--color-text-secondary);
-}
-
-.input-char.current {
-  background: var(--color-button-bg);
-  color: white;
-  font-weight: 600;
-}
-
-.input-char.remaining {
-  background: var(--color-input-bg);
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-input-border);
-}
-
-/* Controls */
-.controls {
-  display: flex;
-  gap: 6px;
-}
-
-/* Status */
-.status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.status-running {
-  background: color-mix(in srgb, var(--color-button-bg) 15%, var(--color-panel-bg));
-  color: var(--color-button-bg);
-}
-.status-running .status-dot {
-  background: var(--color-button-bg);
-}
-
-.status-accepted {
-  background: color-mix(in srgb, var(--color-sim-accepted) 15%, var(--color-panel-bg));
-  color: var(--color-sim-accepted);
-}
-.status-accepted .status-dot {
-  background: var(--color-sim-accepted);
-}
-
-.status-rejected {
-  background: color-mix(in srgb, var(--color-sim-rejected) 15%, var(--color-panel-bg));
-  color: var(--color-sim-rejected);
-}
-.status-rejected .status-dot {
-  background: var(--color-sim-rejected);
-}
-
-.status-stuck {
-  background: color-mix(in srgb, var(--color-sim-stuck) 15%, var(--color-panel-bg));
-  color: var(--color-sim-stuck);
-}
-.status-stuck .status-dot {
-  background: var(--color-sim-stuck);
-}
-
-/* Info rows */
-.info-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-}
-
-.info-label {
-  color: var(--color-text-secondary);
-}
-
-.info-value {
-  color: var(--color-text-primary);
-  font-weight: 500;
-}
-
-.mono {
-  font-family: var(--font-mono);
-}
-</style>

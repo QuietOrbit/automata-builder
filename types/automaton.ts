@@ -1,13 +1,10 @@
-export type StateId = string
-export type TransitionId = string
-
 export interface Position {
   x: number
   y: number
 }
 
 export interface AutomatonState {
-  id: StateId
+  id: string
   name: string
   position: Position
   isStart: boolean
@@ -15,9 +12,9 @@ export interface AutomatonState {
 }
 
 export interface Transition {
-  id: TransitionId
-  sourceId: StateId
-  targetId: StateId
+  id: string
+  sourceId: string
+  targetId: string
   symbol: string
 }
 
@@ -35,15 +32,15 @@ export interface Automaton {
 export type SimulationStatus = 'idle' | 'running' | 'accepted' | 'rejected' | 'stuck'
 
 export interface SimulationHistoryEntry {
-  stateId: StateId
+  stateId: string
   symbolRead: string | null
-  transitionId: TransitionId | null
+  transitionId: string | null
 }
 
 export interface SimulationState {
   input: string
   currentIndex: number
-  currentStateId: StateId | null
+  currentStateId: string | null
   status: SimulationStatus
   history: SimulationHistoryEntry[]
 }

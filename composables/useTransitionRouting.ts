@@ -56,7 +56,7 @@ export function useTransitionRouting() {
         return computeStraightPath(source.position, target.position, STATE_RADIUS)
       }
       const dir = centered > 0 ? 1 : -1
-      return computeCurvedPath(source.position, target.position, STATE_RADIUS, dir as 1 | -1, Math.abs(centered))
+      return computeCurvedPath(source.position, target.position, STATE_RADIUS, dir, Math.abs(centered))
     }
 
     // Bidirectional: all arrows use curveDirection=1.

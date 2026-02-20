@@ -73,81 +73,9 @@ const labelFontSize = computed(() => {
   return 11
 })
 
-let pointerDownAt = { x: 0, y: 0 }
-
 function onPointerDown(event: PointerEvent) {
   if (event.button !== 0) return
-  pointerDownAt = { x: event.clientX, y: event.clientY }
   selection.selectState(props.state.id)
   emit('dragstart', props.state.id, event)
 }
 </script>
-
-<style scoped>
-.state-circle {
-  fill: var(--color-state-fill);
-  stroke: var(--color-state-stroke);
-  stroke-width: 2;
-  transition: stroke 0.15s, fill 0.15s;
-}
-
-.accept-ring {
-  fill: none;
-  stroke: var(--color-state-accept-ring);
-  stroke-width: 2;
-  transition: stroke 0.15s;
-}
-
-.state-label {
-  fill: var(--color-state-text);
-  font-family: var(--font-mono);
-  pointer-events: none;
-  user-select: none;
-}
-
-/* Selected */
-.selected .state-circle {
-  stroke: var(--color-state-selected);
-  stroke-width: 2.5;
-}
-
-.selected .accept-ring {
-  stroke: var(--color-state-selected);
-}
-
-/* Simulation states */
-.is-current .state-circle {
-  stroke: var(--color-sim-current);
-  stroke-width: 3;
-}
-.is-current .accept-ring {
-  stroke: var(--color-sim-current);
-}
-
-.is-accepted .state-circle {
-  stroke: var(--color-sim-accepted);
-  stroke-width: 3;
-  fill: color-mix(in srgb, var(--color-sim-accepted) 15%, var(--color-state-fill));
-}
-.is-accepted .accept-ring {
-  stroke: var(--color-sim-accepted);
-}
-
-.is-rejected .state-circle {
-  stroke: var(--color-sim-rejected);
-  stroke-width: 3;
-  fill: color-mix(in srgb, var(--color-sim-rejected) 15%, var(--color-state-fill));
-}
-.is-rejected .accept-ring {
-  stroke: var(--color-sim-rejected);
-}
-
-.is-stuck .state-circle {
-  stroke: var(--color-sim-stuck);
-  stroke-width: 3;
-  fill: color-mix(in srgb, var(--color-sim-stuck) 15%, var(--color-state-fill));
-}
-.is-stuck .accept-ring {
-  stroke: var(--color-sim-stuck);
-}
-</style>

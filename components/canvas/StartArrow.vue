@@ -20,9 +20,3 @@ const props = defineProps<{
 
 const path = computed(() => computeStartArrowPath(props.state.position, STATE_RADIUS))
 </script>
-
-<style scoped>
-.arrow-path {
-  stroke: var(--color-transition-stroke);
-}
-</style>

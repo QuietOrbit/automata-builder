@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { SimulationHistoryEntry, SimulationState, StateId } from '~/types/automaton'
+import type { SimulationHistoryEntry, SimulationState } from '~/types/automaton'
 import { useAutomatonStore } from '~/stores/automaton'
 
 export const useSimulationStore = defineStore('simulation', {
@@ -95,7 +95,7 @@ export const useSimulationStore = defineStore('simulation', {
 
       const entry = this.history.pop()!
       this.currentStateId = entry.stateId
-      this.currentIndex = Math.max(0, this.currentIndex - (entry.symbolRead !== null ? 1 : 0))
+      this.currentIndex = Math.max(0, this.currentIndex - (entry.symbolRead === null ? 0 : 1))
       this.status = 'running'
     },
 

@@ -1,11 +1,5 @@
 <template>
-  <div
-    class="svg-canvas-wrapper"
-    @keydown.delete="onDelete"
-    @keydown.backspace="onDelete"
-    @keydown.escape="selection.clearSelection()"
-    tabindex="0"
-  >
+  <div class="svg-canvas-wrapper">
     <svg
       ref="svgRef"
       class="svg-canvas"
@@ -113,7 +107,7 @@ const automaton = useAutomatonStore()
 const selection = useSelectionStore()
 
 const svgRef = ref<SVGSVGElement | null>(null)
-const { viewBox, screenToWorld, onWheel, onPanStart, onPanMove, onPanEnd, isPanning } =
+const { viewBox, screenToWorld, onWheel, onPanStart, onPanMove, onPanEnd } =
   useCanvasInteraction(svgRef)
 const { isDragging, onDragStart, onDragMove, onDragEnd } = useDragState(screenToWorld)
 
@@ -158,6 +152,17 @@ function onStateDragStart(stateId: string, event: PointerEvent) {
   onDragStart(stateId, event)
 }
 
+onMounted(() => document.addEventListener('keydown', onKeyDown))
+onUnmounted(() => document.removeEventListener('keydown', onKeyDown))
+
+function onKeyDown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    selection.clearSelection()
+  } else if (event.key === 'Delete' || event.key === 'Backspace') {
+    onDelete()
+  }
+}
+
 function onDelete() {
   if (selection.selectedStateId) {
     automaton.removeState(selection.selectedStateId)
@@ -168,23 +173,3 @@ function onDelete() {
   }
 }
 </script>
-
-<style scoped>
-.svg-canvas-wrapper {
-  width: 100%;
-  height: 100%;
-  outline: none;
-  overflow: hidden;
-  cursor: grab;
-}
-
-.svg-canvas-wrapper:active {
-  cursor: grabbing;
-}
-
-.svg-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-</style>

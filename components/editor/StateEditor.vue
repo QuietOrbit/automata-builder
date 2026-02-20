@@ -11,8 +11,9 @@
 
     <!-- Name -->
     <div class="field">
-      <label class="field-label">Name</label>
+      <label class="field-label" for="state-name-input">Name</label>
       <input
+        id="state-name-input"
         class="input input-mono"
         :value="state.name"
         @input="onNameInput"
@@ -35,7 +36,7 @@
     <!-- Transitions -->
     <div class="field">
       <div class="transitions-header">
-        <label class="field-label">Transitions</label>
+        <span class="field-label">Transitions</span>
         <button class="btn btn-primary btn-sm" @click="addTransition">+ Add</button>
       </div>
 
@@ -109,79 +110,3 @@ function deleteState() {
   selection.clearSelection()
 }
 </script>
-
-<style scoped>
-.state-editor {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  border-bottom: 1px solid var(--color-panel-border);
-}
-
-.editor-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.editor-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.field-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.field-row {
-  display: flex;
-  gap: 16px;
-}
-
-.toggle-field {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.transitions-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.transitions-empty {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  padding: 8px 0;
-}
-
-.transitions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.btn-sm {
-  font-size: 11px;
-  padding: 3px 8px;
-}
-
-.btn-full {
-  width: 100%;
-}
-</style>

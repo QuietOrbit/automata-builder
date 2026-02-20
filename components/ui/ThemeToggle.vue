@@ -21,24 +21,3 @@ function toggle() {
   colorMode.preference = nextMode.value
 }
 </script>
-
-<style scoped>
-.theme-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: color 0.15s, background-color 0.15s;
-}
-
-.theme-toggle:hover {
-  color: var(--color-text-primary);
-  background: var(--color-panel-border);
-}
-</style>

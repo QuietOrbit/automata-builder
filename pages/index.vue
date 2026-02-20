@@ -17,33 +17,3 @@ import { useSelectionStore } from '~/stores/selection'
 
 const selection = useSelectionStore()
 </script>
-
-<style scoped>
-.workspace {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-
-.canvas-area {
-  flex: 1;
-  min-width: 0;
-}
-
-.side-panel {
-  width: var(--panel-width);
-  flex-shrink: 0;
-  border-left: 1px solid var(--color-panel-border);
-  background: var(--color-panel-bg);
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-}
-
-.panel-empty {
-  padding: 20px 16px;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  line-height: 1.6;
-}
-</style>

@@ -1,14 +1,14 @@
-import type { Position, StateId } from '~/types/automaton'
+import type { Position } from '~/types/automaton'
 import { useAutomatonStore } from '~/stores/automaton'
 
 export function useDragState(screenToWorld: (x: number, y: number) => Position) {
   const automaton = useAutomatonStore()
 
   const isDragging = ref(false)
-  const dragTargetId = ref<StateId | null>(null)
+  const dragTargetId = ref<string | null>(null)
   const dragOffset = reactive({ x: 0, y: 0 })
 
-  function onDragStart(stateId: StateId, event: PointerEvent) {
+  function onDragStart(stateId: string, event: PointerEvent) {
     const state = automaton.getState(stateId)
     if (!state) return
 

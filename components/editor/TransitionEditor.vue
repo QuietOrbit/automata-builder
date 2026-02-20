@@ -39,7 +39,7 @@ const props = defineProps<{
   transition: Transition
 }>()
 
-const emit = defineEmits<{
+defineEmits<{
   remove: []
 }>()
 
@@ -59,29 +59,3 @@ function onSymbolChange(event: Event) {
   automaton.updateTransitionSymbol(props.transition.id, symbol)
 }
 </script>
-
-<style scoped>
-.transition-row {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.target-select {
-  flex: 0 0 80px;
-  font-size: 12px;
-  padding: 4px 6px;
-}
-
-.symbols-input {
-  flex: 1;
-  font-size: 12px;
-  padding: 4px 6px;
-  min-width: 0;
-}
-
-.btn-icon {
-  padding: 4px;
-  flex-shrink: 0;
-}
-</style>
