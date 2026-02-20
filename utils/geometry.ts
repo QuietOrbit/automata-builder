@@ -124,18 +124,19 @@ export function computeStraightPath(
   return { path, labelPosition, labelAngle }
 }
 
-/** Compute SVG path for a curved arrow (used for bidirectional edges) */
+/** Compute SVG path for a curved arrow (used for bidirectional/parallel edges) */
 export function computeCurvedPath(
   source: Position,
   target: Position,
   radius: number,
   curveDirection: 1 | -1,
+  magnitude: number = 1,
 ): TransitionPath {
   const dir = normalize(subtract(target, source))
   const perp = perpendicular(dir)
 
   const mid = midpoint(source, target)
-  const controlPoint = add(mid, scale(perp, CURVE_OFFSET * curveDirection))
+  const controlPoint = add(mid, scale(perp, CURVE_OFFSET * curveDirection * magnitude))
 
   // Compute start and end points on circle boundaries
   // Direction from source toward control point

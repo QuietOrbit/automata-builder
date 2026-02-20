@@ -18,7 +18,7 @@ export interface Transition {
   id: TransitionId
   sourceId: StateId
   targetId: StateId
-  symbols: string[]
+  symbol: string
 }
 
 export type AutomatonType = 'DFA' | 'NFA'

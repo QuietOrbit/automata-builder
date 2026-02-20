@@ -93,23 +93,12 @@ export const useAutomatonStore = defineStore('automaton', {
       }
     },
 
-    addTransition(sourceId: StateId, targetId: StateId, symbols: string[]): Transition {
-      // Check if transition already exists for this source-target pair
-      const existing = this.transitions.find(
-        t => t.sourceId === sourceId && t.targetId === targetId,
-      )
-      if (existing) {
-        // Merge symbols
-        const newSymbols = symbols.filter(s => !existing.symbols.includes(s))
-        existing.symbols.push(...newSymbols)
-        return existing
-      }
-
+    addTransition(sourceId: StateId, targetId: StateId, symbol: string): Transition {
       const transition: Transition = {
         id: createId(),
         sourceId,
         targetId,
-        symbols,
+        symbol,
       }
       this.transitions.push(transition)
       return transition
@@ -119,10 +108,10 @@ export const useAutomatonStore = defineStore('automaton', {
       this.transitions = this.transitions.filter(t => t.id !== id)
     },
 
-    updateTransitionSymbols(id: TransitionId, symbols: string[]) {
+    updateTransitionSymbol(id: TransitionId, symbol: string) {
       const transition = this.transitions.find(t => t.id === id)
       if (transition) {
-        transition.symbols = symbols
+        transition.symbol = symbol
       }
     },
 
@@ -155,7 +144,7 @@ export const useAutomatonStore = defineStore('automaton', {
           type: this.type,
           alphabet: [...this.alphabet],
           states: this.states.map(s => ({ ...s, position: { ...s.position } })),
-          transitions: this.transitions.map(t => ({ ...t, symbols: [...t.symbols] })),
+          transitions: this.transitions.map(t => ({ ...t })),
         },
       }
     },

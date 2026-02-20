@@ -17,9 +17,9 @@
 
     <input
       class="input input-mono symbols-input"
-      :value="transition.symbols.join(', ')"
-      placeholder="a, b"
-      @change="onSymbolsChange"
+      :value="transition.symbol"
+      placeholder="a"
+      @change="onSymbolChange"
       @keydown.enter="($event.target as HTMLInputElement).blur()"
     />
 
@@ -54,13 +54,9 @@ function onTargetChange(event: Event) {
   }
 }
 
-function onSymbolsChange(event: Event) {
-  const raw = (event.target as HTMLInputElement).value
-  const symbols = raw
-    .split(',')
-    .map(s => s.trim())
-    .filter(s => s.length > 0)
-  automaton.updateTransitionSymbols(props.transition.id, symbols)
+function onSymbolChange(event: Event) {
+  const symbol = (event.target as HTMLInputElement).value.trim()
+  automaton.updateTransitionSymbol(props.transition.id, symbol)
 }
 </script>
 

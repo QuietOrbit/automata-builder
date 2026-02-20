@@ -64,7 +64,7 @@ export const useSimulationStore = defineStore('simulation', {
 
       // Find matching transition
       const transitions = automaton.getTransitionsFrom(this.currentStateId)
-      const match = transitions.find(t => t.symbols.includes(symbol))
+      const match = transitions.find(t => t.symbol === symbol)
 
       // Save history
       const entry: SimulationHistoryEntry = {

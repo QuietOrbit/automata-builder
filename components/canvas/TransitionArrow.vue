@@ -51,7 +51,7 @@ const simulation = useSimulationStore()
 
 const pathData = computed(() => getTransitionPath(props.transition))
 
-const label = computed(() => props.transition.symbols.join(', '))
+const label = computed(() => props.transition.symbol)
 
 const labelWidth = computed(() => label.value.length * 7.5)
 

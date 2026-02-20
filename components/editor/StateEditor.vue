@@ -98,11 +98,9 @@ function toggleAccept() {
 function addTransition() {
   if (!selection.selectedStateId) return
   const sourceId = selection.selectedStateId
-  // Pick the first state that doesn't already have a transition from this source
-  const existingTargetIds = new Set(transitions.value.map(t => t.targetId))
-  const available = automaton.states.find(s => !existingTargetIds.has(s.id))
-  if (!available) return // all states already have transitions from this source
-  automaton.addTransition(sourceId, available.id, [])
+  // Default target: self, or first other state
+  const targetId = automaton.states[0]?.id ?? sourceId
+  automaton.addTransition(sourceId, targetId, '')
 }
 
 function deleteState() {
