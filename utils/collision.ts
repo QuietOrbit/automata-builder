@@ -6,71 +6,71 @@
  * @module collision
  */
 
-import type { AutomatonState, Position, Transition } from '~/types/automaton'
+import type { AutomatonState, Position, Transition } from "~/types/automaton";
 import {
   STATE_RADIUS,
   SELF_LOOP_RADIUS,
   START_ARROW_LENGTH,
-} from '~/utils/geometry'
+} from "~/utils/geometry";
 
 /** Axis-aligned bounding box. */
 export interface AABB {
-  minX: number
-  minY: number
-  maxX: number
-  maxY: number
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
 }
 
 /** Minimal visual info needed to compute a state's full bounding box. */
 export interface StateVisualInfo {
-  position: Position
-  hasSelfLoop: boolean
-  isStart: boolean
-  selfLoopLabelWidth: number
+  position: Position;
+  hasSelfLoop: boolean;
+  isStart: boolean;
+  selfLoopLabelWidth: number;
 }
 
 /** Approximate character width (px) for estimating label text extent. */
-const CHAR_WIDTH = 8
+const CHAR_WIDTH = 8;
 
 /** Padding around the base circle (accounts for accept ring stroke). */
-const CIRCLE_PADDING = 5
+const CIRCLE_PADDING = 5;
 
 /**
  * Compute the axis-aligned bounding box for a single state, including its
  * visual extras: accept ring padding, self-loop arc + label, and start arrow.
  */
 export function computeStateBounds(info: StateVisualInfo): AABB {
-  const r = STATE_RADIUS + CIRCLE_PADDING
-  let minX = info.position.x - r
-  let maxX = info.position.x + r
-  let minY = info.position.y - r
-  let maxY = info.position.y + r
+  const r = STATE_RADIUS + CIRCLE_PADDING;
+  let minX = info.position.x - r;
+  let maxX = info.position.x + r;
+  let minY = info.position.y - r;
+  const maxY = info.position.y + r;
 
   // Self-loop extends upward: arc top + label
   if (info.hasSelfLoop) {
-    const labelHalfHeight = 10
-    const loopTop = info.position.y - STATE_RADIUS - SELF_LOOP_RADIUS * 2 - 8 - labelHalfHeight
-    if (loopTop < minY) minY = loopTop
+    const labelHalfHeight = 10;
+    const loopTop = info.position.y - STATE_RADIUS - SELF_LOOP_RADIUS * 2 - 8 - labelHalfHeight;
+    if (loopTop < minY) minY = loopTop;
 
-    const labelHalfWidth = (info.selfLoopLabelWidth * CHAR_WIDTH) / 2
-    const labelLeft = info.position.x - labelHalfWidth
-    const labelRight = info.position.x + labelHalfWidth
-    if (labelLeft < minX) minX = labelLeft
-    if (labelRight > maxX) maxX = labelRight
+    const labelHalfWidth = (info.selfLoopLabelWidth * CHAR_WIDTH) / 2;
+    const labelLeft = info.position.x - labelHalfWidth;
+    const labelRight = info.position.x + labelHalfWidth;
+    if (labelLeft < minX) minX = labelLeft;
+    if (labelRight > maxX) maxX = labelRight;
   }
 
   // Start arrow extends to the left
   if (info.isStart) {
-    const arrowLeft = info.position.x - STATE_RADIUS - START_ARROW_LENGTH
-    if (arrowLeft < minX) minX = arrowLeft
+    const arrowLeft = info.position.x - STATE_RADIUS - START_ARROW_LENGTH;
+    if (arrowLeft < minX) minX = arrowLeft;
   }
 
-  return { minX, minY, maxX, maxY }
+  return { minX, minY, maxX, maxY };
 }
 
 /** Test whether two AABBs overlap (share interior area). */
 export function aabbOverlap(a: AABB, b: AABB): boolean {
-  return a.minX < b.maxX && a.maxX > b.minX && a.minY < b.maxY && a.maxY > b.minY
+  return a.minX < b.maxX && a.maxX > b.minX && a.minY < b.maxY && a.maxY > b.minY;
 }
 
 /** Expand an AABB outward by `amount` on every side. */
@@ -80,7 +80,7 @@ function inflateBounds(bounds: AABB, amount: number): AABB {
     minY: bounds.minY - amount,
     maxX: bounds.maxX + amount,
     maxY: bounds.maxY + amount,
-  }
+  };
 }
 
 /**
@@ -94,17 +94,17 @@ function computeSeparation(
   b: AABB,
   posI: Position,
   posJ: Position,
-): { axis: 'x' | 'y'; shiftI: number; shiftJ: number } {
-  const overlapX = Math.min(a.maxX - b.minX, b.maxX - a.minX)
-  const overlapY = Math.min(a.maxY - b.minY, b.maxY - a.minY)
-  const half = (Math.min(overlapX, overlapY)) / 2
+): { axis: "x" | "y"; shiftI: number; shiftJ: number } {
+  const overlapX = Math.min(a.maxX - b.minX, b.maxX - a.minX);
+  const overlapY = Math.min(a.maxY - b.minY, b.maxY - a.minY);
+  const half = (Math.min(overlapX, overlapY)) / 2;
 
   if (overlapX < overlapY) {
-    const sign = posI.x < posJ.x ? -1 : 1
-    return { axis: 'x', shiftI: sign * half, shiftJ: -sign * half }
+    const sign = posI.x < posJ.x ? -1 : 1;
+    return { axis: "x", shiftI: sign * half, shiftJ: -sign * half };
   }
-  const sign = posI.y < posJ.y ? -1 : 1
-  return { axis: 'y', shiftI: sign * half, shiftJ: -sign * half }
+  const sign = posI.y < posJ.y ? -1 : 1;
+  return { axis: "y", shiftI: sign * half, shiftJ: -sign * half };
 }
 
 /** Apply a separation vector to a pair of positions (mutates the array). */
@@ -112,14 +112,15 @@ function separatePair(
   positions: Position[],
   i: number,
   j: number,
-  sep: { axis: 'x' | 'y'; shiftI: number; shiftJ: number },
+  sep: { axis: "x" | "y"; shiftI: number; shiftJ: number },
 ): void {
-  if (sep.axis === 'x') {
-    positions[i] = { ...positions[i], x: positions[i].x + sep.shiftI }
-    positions[j] = { ...positions[j], x: positions[j].x + sep.shiftJ }
-  } else {
-    positions[i] = { ...positions[i], y: positions[i].y + sep.shiftI }
-    positions[j] = { ...positions[j], y: positions[j].y + sep.shiftJ }
+  if (sep.axis === "x") {
+    positions[i] = { ...positions[i], x: positions[i].x + sep.shiftI };
+    positions[j] = { ...positions[j], x: positions[j].x + sep.shiftJ };
+  }
+  else {
+    positions[i] = { ...positions[i], y: positions[i].y + sep.shiftI };
+    positions[j] = { ...positions[j], y: positions[j].y + sep.shiftJ };
   }
 }
 
@@ -129,26 +130,26 @@ function resolvePass(
   visualInfos: StateVisualInfo[],
   padding: number,
 ): boolean {
-  let anyOverlap = false
+  let anyOverlap = false;
 
   const bounds: AABB[] = visualInfos.map((info, i) =>
     computeStateBounds({ ...info, position: positions[i] }),
-  )
+  );
 
   for (let i = 0; i < bounds.length; i++) {
     for (let j = i + 1; j < bounds.length; j++) {
-      const a = inflateBounds(bounds[i], padding)
-      const b = inflateBounds(bounds[j], padding)
+      const a = inflateBounds(bounds[i], padding);
+      const b = inflateBounds(bounds[j], padding);
 
-      if (!aabbOverlap(a, b)) continue
-      anyOverlap = true
+      if (!aabbOverlap(a, b)) continue;
+      anyOverlap = true;
 
-      const sep = computeSeparation(a, b, positions[i], positions[j])
-      separatePair(positions, i, j, sep)
+      const sep = computeSeparation(a, b, positions[i], positions[j]);
+      separatePair(positions, i, j, sep);
     }
   }
 
-  return anyOverlap
+  return anyOverlap;
 }
 
 /**
@@ -169,7 +170,7 @@ export function resolveCollisions(
   padding = 10,
 ): void {
   for (let iter = 0; iter < maxIterations; iter++) {
-    if (!resolvePass(positions, visualInfos, padding)) break
+    if (!resolvePass(positions, visualInfos, padding)) break;
   }
 }
 
@@ -185,29 +186,30 @@ export function buildVisualInfosFromStore(
 ): StateVisualInfo[] {
   // Pre-compute self-loop data: which states have self-loops, and the
   // combined label width (all symbols on that self-loop joined by ", ").
-  const selfLoopSymbols = new Map<string, string[]>()
+  const selfLoopSymbols = new Map<string, string[]>();
   for (const t of transitions) {
     if (t.sourceId === t.targetId) {
-      const existing = selfLoopSymbols.get(t.sourceId)
+      const existing = selfLoopSymbols.get(t.sourceId);
       if (existing) {
-        existing.push(t.symbol)
-      } else {
-        selfLoopSymbols.set(t.sourceId, [t.symbol])
+        existing.push(t.symbol);
+      }
+      else {
+        selfLoopSymbols.set(t.sourceId, [t.symbol]);
       }
     }
   }
 
-  return states.map(s => {
-    const symbols = selfLoopSymbols.get(s.id)
-    const hasSelfLoop = symbols !== undefined
-    const labelText = hasSelfLoop ? symbols.join(', ') : ''
+  return states.map((s) => {
+    const symbols = selfLoopSymbols.get(s.id);
+    const hasSelfLoop = symbols !== undefined;
+    const labelText = hasSelfLoop ? symbols.join(", ") : "";
     return {
       position: s.position,
       hasSelfLoop,
       isStart: s.isStart,
       selfLoopLabelWidth: labelText.length,
-    }
-  })
+    };
+  });
 }
 
 /**
@@ -223,20 +225,20 @@ export function buildVisualInfosFromTuple(
   positions: Position[],
 ): StateVisualInfo[] {
   return stateNames.map((name, i) => {
-    const symbolMap = tupleTransitions[name] ?? {}
-    const selfLoopSymbols: string[] = []
+    const symbolMap = tupleTransitions[name] ?? {};
+    const selfLoopSymbols: string[] = [];
     for (const [symbol, targets] of Object.entries(symbolMap)) {
       if (targets.includes(name)) {
-        selfLoopSymbols.push(symbol)
+        selfLoopSymbols.push(symbol);
       }
     }
-    const hasSelfLoop = selfLoopSymbols.length > 0
-    const labelText = hasSelfLoop ? selfLoopSymbols.join(', ') : ''
+    const hasSelfLoop = selfLoopSymbols.length > 0;
+    const labelText = hasSelfLoop ? selfLoopSymbols.join(", ") : "";
     return {
       position: positions[i],
       hasSelfLoop,
       isStart: name === startState,
       selfLoopLabelWidth: labelText.length,
-    }
-  })
+    };
+  });
 }

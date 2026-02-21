@@ -1,5 +1,9 @@
 <template>
-  <g v-if="pathData" class="transition-arrow" :class="{ active: isActive, 'sim-active': isSimActive }">
+  <g
+    v-if="pathData"
+    class="transition-arrow"
+    :class="{ 'active': isActive, 'sim-active': isSimActive }"
+  >
     <!-- Arrow path -->
     <path
       :d="pathData.path"
@@ -36,52 +40,52 @@
 </template>
 
 <script setup lang="ts">
-import type { Transition } from '~/types/automaton'
-import { SimulationStatus } from '~/types/automaton'
-import { useTransitionRouting } from '~/composables/useTransitionRouting'
-import { useSelectionStore } from '~/stores/selection'
-import { useSimulationStore } from '~/stores/simulation'
+import type { Transition } from "~/types/automaton";
+import { SimulationStatus } from "~/types/automaton";
+import { useTransitionRouting } from "~/composables/useTransitionRouting";
+import { useSelectionStore } from "~/stores/selection";
+import { useSimulationStore } from "~/stores/simulation";
 
 const props = defineProps<{
-  transitions: Transition[]
-}>()
+  transitions: Transition[];
+}>();
 
-const { getTransitionPath } = useTransitionRouting()
-const selection = useSelectionStore()
-const simulation = useSimulationStore()
+const { getTransitionPath } = useTransitionRouting();
+const selection = useSelectionStore();
+const simulation = useSimulationStore();
 
 // Use the first transition for routing (all share the same sourceId/targetId)
-const representative = computed(() => props.transitions[0])
+const representative = computed(() => props.transitions[0]);
 
 const pathData = computed(() => {
-  if (!representative.value) return null
-  return getTransitionPath(representative.value)
-})
+  if (!representative.value) return null;
+  return getTransitionPath(representative.value);
+});
 
 const label = computed(() =>
   props.transitions
     .map(t => t.symbol)
     .filter(s => s.length > 0)
-    .join(',')
-)
+    .join(","),
+);
 
-const labelWidth = computed(() => label.value.length * 7.5)
+const labelWidth = computed(() => label.value.length * 7.5);
 
-const transitionIds = computed(() => new Set(props.transitions.map(t => t.id)))
+const transitionIds = computed(() => new Set(props.transitions.map(t => t.id)));
 
 const isActive = computed(() =>
-  selection.selectedTransitionId !== null && transitionIds.value.has(selection.selectedTransitionId)
-)
+  selection.selectedTransitionId !== null && transitionIds.value.has(selection.selectedTransitionId),
+);
 
 const isSimActive = computed(() => {
-  if (simulation.status === SimulationStatus.Idle) return false
-  const lastEntry = simulation.history[simulation.history.length - 1]
-  return lastEntry?.transitionIds?.some(id => transitionIds.value.has(id)) ?? false
-})
+  if (simulation.status === SimulationStatus.Idle) return false;
+  const lastEntry = simulation.history[simulation.history.length - 1];
+  return lastEntry?.transitionIds?.some(id => transitionIds.value.has(id)) ?? false;
+});
 
 const markerUrl = computed(() => {
-  if (isSimActive.value) return 'url(#arrowhead-sim)'
-  if (isActive.value) return 'url(#arrowhead-active)'
-  return 'url(#arrowhead)'
-})
+  if (isSimActive.value) return "url(#arrowhead-sim)";
+  if (isActive.value) return "url(#arrowhead-active)";
+  return "url(#arrowhead)";
+});
 </script>

@@ -1,5 +1,5 @@
-import type { Position } from '~/types/automaton'
-import { useAutomatonStore } from '~/stores/automaton'
+import type { Position } from "~/types/automaton";
+import { useAutomatonStore } from "~/stores/automaton";
 
 /**
  * Composable for dragging state nodes on the SVG canvas.
@@ -11,14 +11,14 @@ import { useAutomatonStore } from '~/stores/automaton'
  * @returns Reactive drag state and event handlers for pointer events.
  */
 export function useDragState(screenToWorld: (x: number, y: number) => Position) {
-  const automaton = useAutomatonStore()
+  const automaton = useAutomatonStore();
 
   /** Whether a drag operation is currently in progress. */
-  const isDragging = ref(false)
+  const isDragging = ref(false);
   /** ID of the state being dragged, or null if not dragging. */
-  const dragTargetId = ref<string | null>(null)
+  const dragTargetId = ref<string | null>(null);
   /** Offset between the pointer's world position and the state's center at drag start. */
-  const dragOffset = reactive({ x: 0, y: 0 })
+  const dragOffset = reactive({ x: 0, y: 0 });
 
   /**
    * Begin dragging a state node. Records the offset between the pointer
@@ -27,15 +27,15 @@ export function useDragState(screenToWorld: (x: number, y: number) => Position) 
    * @param event - The initiating pointer event.
    */
   function onDragStart(stateId: string, event: PointerEvent) {
-    const state = automaton.getState(stateId)
-    if (!state) return
+    const state = automaton.getState(stateId);
+    if (!state) return;
 
-    isDragging.value = true
-    dragTargetId.value = stateId
+    isDragging.value = true;
+    dragTargetId.value = stateId;
 
-    const worldPos = screenToWorld(event.clientX, event.clientY)
-    dragOffset.x = state.position.x - worldPos.x
-    dragOffset.y = state.position.y - worldPos.y
+    const worldPos = screenToWorld(event.clientX, event.clientY);
+    dragOffset.x = state.position.x - worldPos.x;
+    dragOffset.y = state.position.y - worldPos.y;
   }
 
   /**
@@ -43,21 +43,21 @@ export function useDragState(screenToWorld: (x: number, y: number) => Position) 
    * Applies the stored offset to maintain the grab point.
    */
   function onDragMove(event: PointerEvent) {
-    if (!isDragging.value || !dragTargetId.value) return
+    if (!isDragging.value || !dragTargetId.value) return;
 
-    const worldPos = screenToWorld(event.clientX, event.clientY)
+    const worldPos = screenToWorld(event.clientX, event.clientY);
     automaton.updateState(dragTargetId.value, {
       position: {
         x: worldPos.x + dragOffset.x,
         y: worldPos.y + dragOffset.y,
       },
-    })
+    });
   }
 
   /** End the current drag operation and clear the drag target. */
   function onDragEnd() {
-    isDragging.value = false
-    dragTargetId.value = null
+    isDragging.value = false;
+    dragTargetId.value = null;
   }
 
   return {
@@ -66,5 +66,5 @@ export function useDragState(screenToWorld: (x: number, y: number) => Position) 
     onDragStart,
     onDragMove,
     onDragEnd,
-  }
+  };
 }

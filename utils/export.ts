@@ -1,10 +1,10 @@
-import type { Position } from '~/types/automaton'
+import type { Position } from "~/types/automaton";
 
 interface Bounds {
-  x: number
-  y: number
-  width: number
-  height: number
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 /**
@@ -14,20 +14,20 @@ interface Bounds {
  */
 export function computeContentBounds(
   positions: Position[],
-  padding: number = 80
+  padding: number = 80,
 ): Bounds | null {
-  if (positions.length === 0) return null
+  if (positions.length === 0) return null;
 
-  let minX = Infinity
-  let minY = Infinity
-  let maxX = -Infinity
-  let maxY = -Infinity
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
 
   for (const pos of positions) {
-    if (pos.x < minX) minX = pos.x
-    if (pos.y < minY) minY = pos.y
-    if (pos.x > maxX) maxX = pos.x
-    if (pos.y > maxY) maxY = pos.y
+    if (pos.x < minX) minX = pos.x;
+    if (pos.y < minY) minY = pos.y;
+    if (pos.x > maxX) maxX = pos.x;
+    if (pos.y > maxY) maxY = pos.y;
   }
 
   return {
@@ -35,16 +35,16 @@ export function computeContentBounds(
     y: minY - padding,
     width: maxX - minX + padding * 2,
     height: maxY - minY + padding * 2,
-  }
+  };
 }
 
 const INLINE_PROPS = [
-  'fill',
-  'stroke',
-  'stroke-width',
-  'font-family',
-  'font-size',
-] as const
+  "fill",
+  "stroke",
+  "stroke-width",
+  "font-family",
+  "font-size",
+] as const;
 
 /**
  * Walk both element trees in parallel, reading computed styles from the
@@ -52,19 +52,19 @@ const INLINE_PROPS = [
  * CSS custom properties so the exported SVG is self-contained.
  */
 function inlineStyles(original: SVGSVGElement, clone: SVGSVGElement): void {
-  const origElements = original.querySelectorAll('*')
-  const cloneElements = clone.querySelectorAll('*')
+  const origElements = original.querySelectorAll("*");
+  const cloneElements = clone.querySelectorAll("*");
 
   for (let i = 0; i < origElements.length; i++) {
-    const origEl = origElements[i]
-    const cloneEl = cloneElements[i] as HTMLElement | SVGElement | undefined
-    if (!cloneEl) break
+    const origEl = origElements[i];
+    const cloneEl = cloneElements[i] as HTMLElement | SVGElement | undefined;
+    if (!cloneEl) break;
 
-    const computed = globalThis.getComputedStyle(origEl)
+    const computed = globalThis.getComputedStyle(origEl);
     for (const prop of INLINE_PROPS) {
-      const value = computed.getPropertyValue(prop)
+      const value = computed.getPropertyValue(prop);
       if (value) {
-        cloneEl.style.setProperty(prop, value)
+        cloneEl.style.setProperty(prop, value);
       }
     }
   }
@@ -75,11 +75,11 @@ function inlineStyles(original: SVGSVGElement, clone: SVGSVGElement): void {
  */
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => resolve(img)
-    img.onerror = reject
-    img.src = src
-  })
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
 }
 
 /**
@@ -88,53 +88,53 @@ function loadImage(src: string): Promise<HTMLImageElement> {
  */
 export function prepareSvgForExport(
   svgElement: SVGSVGElement,
-  bounds: Bounds
+  bounds: Bounds,
 ): SVGSVGElement {
-  const clone = svgElement.cloneNode(true) as SVGSVGElement
+  const clone = svgElement.cloneNode(true) as SVGSVGElement;
 
   // Inline styles FIRST while the clone's DOM structure exactly matches the
   // original. This ensures the parallel querySelectorAll('*') walk pairs each
   // original element with its correct clone counterpart.
-  inlineStyles(svgElement, clone)
+  inlineStyles(svgElement, clone);
 
   // Now safe to modify the clone's DOM — style data is already baked in.
-  clone.querySelector('.grid-bg')?.remove()
-  clone.querySelector('#grid')?.remove()
-  clone.querySelector('#grid-major')?.remove()
+  clone.querySelector(".grid-bg")?.remove();
+  clone.querySelector("#grid")?.remove();
+  clone.querySelector("#grid-major")?.remove();
 
   // Resolve --color-bg from the live document
   const bgColor = getComputedStyle(document.documentElement)
-    .getPropertyValue('--color-bg')
-    .trim()
+    .getPropertyValue("--color-bg")
+    .trim();
 
   // Insert background rect as first child of clone
-  const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
-  bgRect.setAttribute('x', String(bounds.x))
-  bgRect.setAttribute('y', String(bounds.y))
-  bgRect.setAttribute('width', String(bounds.width))
-  bgRect.setAttribute('height', String(bounds.height))
-  bgRect.setAttribute('fill', bgColor)
-  clone.insertBefore(bgRect, clone.firstChild)
+  const bgRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  bgRect.setAttribute("x", String(bounds.x));
+  bgRect.setAttribute("y", String(bounds.y));
+  bgRect.setAttribute("width", String(bounds.width));
+  bgRect.setAttribute("height", String(bounds.height));
+  bgRect.setAttribute("fill", bgColor);
+  clone.insertBefore(bgRect, clone.firstChild);
 
   // Set viewBox and dimensions
   clone.setAttribute(
-    'viewBox',
-    `${bounds.x} ${bounds.y} ${bounds.width} ${bounds.height}`
-  )
-  clone.setAttribute('width', String(bounds.width))
-  clone.setAttribute('height', String(bounds.height))
+    "viewBox",
+    `${bounds.x} ${bounds.y} ${bounds.width} ${bounds.height}`,
+  );
+  clone.setAttribute("width", String(bounds.width));
+  clone.setAttribute("height", String(bounds.height));
 
-  return clone
+  return clone;
 }
 
 /**
  * Serialize an SVG element to a string with XML declaration and xmlns.
  */
 export function serializeSvg(svgElement: SVGSVGElement): string {
-  svgElement.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
-  const serializer = new XMLSerializer()
-  const svgString = serializer.serializeToString(svgElement)
-  return '<?xml version="1.0" encoding="UTF-8"?>\n' + svgString
+  svgElement.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  const serializer = new XMLSerializer();
+  const svgString = serializer.serializeToString(svgElement);
+  return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + svgString;
 }
 
 /**
@@ -143,14 +143,14 @@ export function serializeSvg(svgElement: SVGSVGElement): string {
  */
 export function exportSvgBlob(
   svgElement: SVGSVGElement,
-  positions: Position[]
+  positions: Position[],
 ): Blob | null {
-  const bounds = computeContentBounds(positions)
-  if (!bounds) return null
+  const bounds = computeContentBounds(positions);
+  if (!bounds) return null;
 
-  const prepared = prepareSvgForExport(svgElement, bounds)
-  const svgString = serializeSvg(prepared)
-  return new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' })
+  const prepared = prepareSvgForExport(svgElement, bounds);
+  const svgString = serializeSvg(prepared);
+  return new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
 }
 
 /**
@@ -161,53 +161,53 @@ export function exportSvgBlob(
 export async function exportRasterBlob(
   svgElement: SVGSVGElement,
   positions: Position[],
-  format: 'png' | 'jpeg',
-  scale: number = 2
+  format: "png" | "jpeg",
+  scale: number = 2,
 ): Promise<Blob | null> {
-  const bounds = computeContentBounds(positions)
-  if (!bounds) return null
+  const bounds = computeContentBounds(positions);
+  if (!bounds) return null;
 
-  const prepared = prepareSvgForExport(svgElement, bounds)
-  const svgString = serializeSvg(prepared)
+  const prepared = prepareSvgForExport(svgElement, bounds);
+  const svgString = serializeSvg(prepared);
 
   // Use encodeURIComponent for Unicode safety
-  const dataUrl =
-    'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString)
+  const dataUrl
+    = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgString);
 
-  const img = await loadImage(dataUrl)
+  const img = await loadImage(dataUrl);
 
-  const canvas = document.createElement('canvas')
-  canvas.width = bounds.width * scale
-  canvas.height = bounds.height * scale
+  const canvas = document.createElement("canvas");
+  canvas.width = bounds.width * scale;
+  canvas.height = bounds.height * scale;
 
-  const ctx = canvas.getContext('2d')!
+  const ctx = canvas.getContext("2d")!;
 
   // JPEG doesn't support transparency — fill with white
-  if (format === 'jpeg') {
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
+  if (format === "jpeg") {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
   return new Promise<Blob | null>((resolve) => {
-    const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png'
+    const mimeType = format === "jpeg" ? "image/jpeg" : "image/png";
     canvas.toBlob(
-      (blob) => resolve(blob),
+      blob => resolve(blob),
       mimeType,
-      format === 'jpeg' ? 0.95 : undefined
-    )
-  })
+      format === "jpeg" ? 0.95 : undefined,
+    );
+  });
 }
 
 /**
  * Trigger a browser download for a Blob with the given filename.
  */
 export function triggerDownload(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }

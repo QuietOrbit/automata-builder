@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { defineStore } from "pinia";
 
 /**
  * Lightweight signaling store to bridge sidebar components (TupleBuilder)
@@ -8,7 +8,7 @@ import { defineStore } from 'pinia'
  * counter and reacts whenever it increments, regardless of when the watcher
  * fires.
  */
-export const useViewportStore = defineStore('viewport', {
+export const useViewportStore = defineStore("viewport", {
   state: () => ({
     /** Monotonically increasing counter; each increment triggers a fit-to-content. */
     fitRequestId: 0,
@@ -17,7 +17,7 @@ export const useViewportStore = defineStore('viewport', {
   actions: {
     /** Signal that the canvas should re-center and zoom to fit all content. */
     requestFitToContent() {
-      this.fitRequestId++
+      this.fitRequestId++;
     },
   },
-})
+});
