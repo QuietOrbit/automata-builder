@@ -169,6 +169,9 @@ onMounted(() => document.addEventListener('keydown', onKeyDown))
 onUnmounted(() => document.removeEventListener('keydown', onKeyDown))
 
 function onKeyDown(event: KeyboardEvent) {
+  const tag = (event.target as HTMLElement)?.tagName
+  if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
+
   if (event.key === 'Escape') {
     selection.clearSelection()
   } else if (event.key === 'Delete' || event.key === 'Backspace') {
