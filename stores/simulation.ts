@@ -28,9 +28,14 @@ export const useSimulationStore = defineStore('simulation', {
       return this.status === SimulationStatus.Accepted || this.status === SimulationStatus.Rejected || this.status === SimulationStatus.Stuck
     },
 
-    /** Whether a forward step can be taken (only possible while running). */
+    /** Whether a forward step can be taken (while running, or from idle with a start state). */
     canStep(): boolean {
-      return this.status === SimulationStatus.Running
+      if (this.status === SimulationStatus.Running) return true
+      if (this.status === SimulationStatus.Idle) {
+        const automaton = useAutomatonStore()
+        return automaton.startState !== undefined
+      }
+      return false
     },
 
     /** Whether a backward step can be taken (requires at least one history entry). */
@@ -56,33 +61,40 @@ export const useSimulationStore = defineStore('simulation', {
     },
 
     /**
-     * Reset the simulation to the beginning of the current input string.
-     * Moves back to the start state and clears history. If no start state
-     * exists, the simulation enters idle. If the input is empty, the result
-     * is immediately determined by the start state's accept flag.
+     * Reset the simulation to idle, clearing all state and history.
+     * Use Step or Run to re-initialize from the start state.
      */
     reset() {
-      const automaton = useAutomatonStore()
-      const start = automaton.startState
       this.currentIndex = 0
-      this.currentStateId = start?.id ?? null
+      this.currentStateId = null
       this.history = []
-
-      if (!start) {
-        this.status = SimulationStatus.Idle
-      } else if (this.input.length === 0) {
-        this.status = start.isAccept ? SimulationStatus.Accepted : SimulationStatus.Rejected
-      } else {
-        this.status = SimulationStatus.Running
-      }
+      this.status = SimulationStatus.Idle
     },
 
     /**
-     * Advance the simulation by one symbol. Finds a matching transition from
-     * the current state, records the step in history, and moves to the target
-     * state. If no transition matches, the simulation enters the stuck state.
+     * Advance the simulation by one symbol. If idle, initializes at the start
+     * state first. Finds a matching transition from the current state, records
+     * the step in history, and moves to the target state. If no transition
+     * matches, the simulation enters the stuck state.
      */
     step() {
+      // If idle, initialize simulation at the start state
+      if (this.status === SimulationStatus.Idle) {
+        const automaton = useAutomatonStore()
+        const start = automaton.startState
+        if (!start) return
+        this.currentStateId = start.id
+        this.currentIndex = 0
+        this.history = []
+
+        if (this.input.length === 0) {
+          this.status = start.isAccept ? SimulationStatus.Accepted : SimulationStatus.Rejected
+        } else {
+          this.status = SimulationStatus.Running
+        }
+        return
+      }
+
       if (this.status !== SimulationStatus.Running || this.currentStateId === null) return
 
       const automaton = useAutomatonStore()
@@ -134,6 +146,10 @@ export const useSimulationStore = defineStore('simulation', {
      * counter (10,000 iterations) is reached to prevent infinite loops.
      */
     runToEnd() {
+      // Initialize from idle if needed
+      if (this.status === SimulationStatus.Idle) {
+        this.step()
+      }
       let safetyCounter = 10000
       while (this.status === SimulationStatus.Running && safetyCounter > 0) {
         this.step()
