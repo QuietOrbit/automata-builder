@@ -767,23 +767,38 @@ body {
   gap: 4px;
 }
 
-.tuple-checkboxes {
+.tuple-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 12px;
+  gap: 6px;
 }
 
-.tuple-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 13px;
+.tuple-chip {
+  padding: 4px 12px;
+  border: 1px solid var(--color-input-border);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 12px;
   cursor: pointer;
   user-select: none;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.tuple-checkbox input[type="checkbox"] {
-  accent-color: var(--color-button-bg);
+.tuple-chip:hover {
+  border-color: var(--color-text-secondary);
+  color: var(--color-text-primary);
+}
+
+.tuple-chip.active {
+  background: var(--color-button-bg);
+  border-color: var(--color-button-bg);
+  color: var(--color-button-text);
+}
+
+.tuple-chip.active:hover {
+  background: var(--color-button-hover);
+  border-color: var(--color-button-hover);
 }
 
 /* --- Transition table --- */

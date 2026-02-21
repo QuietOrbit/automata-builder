@@ -123,8 +123,20 @@ export interface TransitionPath {
 }
 
 /**
+ * How far outside the circle boundary the arc endpoint lands before the
+ * final inward segment. This gives the arrowhead marker a radially-inward
+ * direction rather than following the arc's tangent.
+ */
+const SELF_LOOP_ARROW_INSET = 8
+
+/**
  * Compute the SVG path for a self-loop arc above a state node.
+ *
  * The arc runs from the upper-left to upper-right of the circle boundary.
+ * A short straight segment at the end points radially inward so the
+ * arrowhead marker aligns toward the state center instead of following
+ * the arc's tangent.
+ *
  * @param center - Center position of the state.
  * @param radius - Radius of the state circle.
  */
@@ -133,9 +145,14 @@ export function computeSelfLoopPath(center: Position, radius: number): Transitio
   const angleRight = -Math.PI / 2 + Math.PI / 6 // -60 degrees
 
   const start = circlePointAtAngle(center, radius, angleLeft)
+  const arcEnd = circlePointAtAngle(center, radius + SELF_LOOP_ARROW_INSET, angleRight)
   const end = circlePointAtAngle(center, radius, angleRight)
 
-  const path = `M ${start.x} ${start.y} A ${SELF_LOOP_RADIUS} ${SELF_LOOP_RADIUS} 0 1 1 ${end.x} ${end.y}`
+  const path = [
+    `M ${start.x} ${start.y}`,
+    `A ${SELF_LOOP_RADIUS} ${SELF_LOOP_RADIUS} 0 1 1 ${arcEnd.x} ${arcEnd.y}`,
+    `L ${end.x} ${end.y}`,
+  ].join(' ')
 
   const labelPosition = {
     x: center.x,

@@ -45,11 +45,16 @@
     <!-- F (Accept States) -->
     <div class="field">
       <span class="field-label">F (Accept States)</span>
-      <div class="tuple-checkboxes">
-        <label v-for="s in automaton.states" :key="s.id" class="tuple-checkbox">
-          <input type="checkbox" :checked="s.isAccept" @change="toggleAccept(s.id)" />
-          <span class="mono">{{ s.name }}</span>
-        </label>
+      <div class="tuple-chips">
+        <button
+          v-for="s in automaton.states"
+          :key="s.id"
+          class="tuple-chip mono"
+          :class="{ active: s.isAccept }"
+          @click="toggleAccept(s.id)"
+        >
+          {{ s.name }}
+        </button>
       </div>
     </div>
 
