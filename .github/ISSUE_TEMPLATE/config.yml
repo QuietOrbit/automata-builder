@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Live Demo
+    url: https://quietorbit.github.io/automata-builder/
+    about: Try the app before opening an issue

@@ -1,13 +1,26 @@
 {
   "name": "automata-builder",
-  "private": true,
+  "version": "0.1.0",
+  "private": false,
+  "description": "Visual DFA/NFA builder and simulator for Automata Theory",
+  "author": "QuietOrbit",
+  "license": "CC-BY-NC-4.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/QuietOrbit/automata-builder.git"
+  },
+  "homepage": "https://quietorbit.github.io/automata-builder/",
+  "bugs": {
+    "url": "https://github.com/QuietOrbit/automata-builder/issues"
+  },
   "type": "module",
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "typecheck": "npx tsc --noEmit"
   },
   "dependencies": {
     "@nuxtjs/color-mode": "^4.0.0",

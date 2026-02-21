@@ -1,0 +1,71 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the sections below so we can reproduce and fix it.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear description of the bug.
+      placeholder: What happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Step-by-step instructions to trigger the bug.
+      placeholder: |
+        1. Open the app
+        2. Create a state...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should have happened instead?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: automaton-mode
+    attributes:
+      label: Automaton Mode
+      description: Which mode were you using?
+      options:
+        - DFA
+        - NFA
+        - Both
+        - N/A
+    validations:
+      required: true
+
+  - type: dropdown
+    id: build-method
+    attributes:
+      label: How was the automaton built?
+      options:
+        - Canvas (manual)
+        - 5-tuple builder
+        - JSON import
+        - N/A
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      description: Which browser and version are you using?
+      placeholder: e.g. Chrome 120, Firefox 121, Safari 17
+    validations:
+      required: false

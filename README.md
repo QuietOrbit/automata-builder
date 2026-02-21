@@ -1,5 +1,8 @@
 # Automata Builder
 
+[![CI](https://github.com/QuietOrbit/automata-builder/actions/workflows/ci.yml/badge.svg)](https://github.com/QuietOrbit/automata-builder/actions/workflows/ci.yml)
+[![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
+
 A visual DFA/NFA builder and simulator for Theory of Computation courses. Construct automata on an interactive SVG canvas, define them with a formal 5-tuple, and step through input strings to test acceptance.
 
 **[Try it live](https://quietorbit.github.io/automata-builder/)**
@@ -65,6 +68,12 @@ types/            TypeScript interfaces and enums
 
 GitHub Actions (`.github/workflows/deploy.yml`) runs `nuxt generate` and deploys to GitHub Pages on push to `main`.
 
+## Contributing
+
+Contributions are welcome! Please read the [contributing guide](CONTRIBUTING.md) before submitting a pull request.
+
 ## License
 
-MIT
+This project is licensed under the [Creative Commons Attribution-NonCommercial 4.0 International License](LICENSE).
+
+You are free to share and adapt this work for non-commercial purposes with appropriate attribution. See the [full license text](https://creativecommons.org/licenses/by-nc/4.0/) for details.
