@@ -14,7 +14,7 @@
     <input
       class="input input-mono symbols-input"
       :value="localSymbols"
-      placeholder="a, b"
+      :placeholder="isNFA ? 'a, b, ε' : 'a, b'"
       @focus="inputFocused = true"
       @blur="onFixedBlur"
       @input="onFixedInput"
@@ -39,12 +39,17 @@
     </select>
 
     <input
+      ref="existingSymbolsRef"
       class="input input-mono symbols-input"
       :value="displaySymbols"
-      placeholder="a, b"
+      :placeholder="isNFA ? 'a, b, ε' : 'a, b'"
       @change="onSymbolsChange"
       @keydown.enter="($event.target as HTMLInputElement).blur()"
     />
+
+    <button v-if="isNFA" class="btn btn-ghost btn-icon" @click="addEpsilonToExisting" title="Add ε transition">
+      ε
+    </button>
 
     <button class="btn btn-ghost btn-icon" @click="removeGroup" title="Remove transitions">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -73,14 +78,19 @@
     <input
       class="input input-mono symbols-input"
       :value="newSymbols"
-      placeholder="a, b"
+      :placeholder="isNFA ? 'a, b, ε' : 'a, b'"
       @input="onNewSymbolsInput"
     />
+
+    <button v-if="isNFA" class="btn btn-ghost btn-icon" @click="addEpsilonToNew" title="Add ε transition">
+      ε
+    </button>
   </div>
 </template>
 
 <script setup lang="ts">
 import type { Transition } from '~/types/automaton'
+import { AutomatonType, EPSILON } from '~/types/automaton'
 import { useAutomatonStore } from '~/stores/automaton'
 
 const props = defineProps<{
@@ -90,6 +100,8 @@ const props = defineProps<{
 }>()
 
 const automaton = useAutomatonStore()
+
+const isNFA = computed(() => automaton.type === AutomatonType.NFA)
 
 const availableTargets = computed(() => automaton.states)
 
@@ -141,6 +153,17 @@ function syncFixedSymbols(raw: string) {
       automaton.addTransition(props.sourceId, targetId, symbol)
     }
   }
+}
+
+const existingSymbolsRef = ref<HTMLInputElement | null>(null)
+
+/** Append ε to the existing group's symbols if not already present. */
+function addEpsilonToExisting() {
+  const currentSymbols = props.transitions.map(t => t.symbol)
+  if (currentSymbols.includes(EPSILON)) return
+  const targetId = props.transitions[0]?.targetId
+  if (!targetId) return
+  automaton.addTransition(props.sourceId, targetId, EPSILON)
 }
 
 // --- NFA existing group handlers ---
@@ -199,6 +222,14 @@ function onNewTargetChange(event: Event) {
 
 function onNewSymbolsInput(event: Event) {
   newSymbols.value = (event.target as HTMLInputElement).value
+  tryCreateTransitions()
+}
+
+/** Set ε as the symbol for the new row and attempt to create. */
+function addEpsilonToNew() {
+  if (!newSymbols.value.includes(EPSILON)) {
+    newSymbols.value = newSymbols.value ? `${newSymbols.value}, ${EPSILON}` : EPSILON
+  }
   tryCreateTransitions()
 }
 

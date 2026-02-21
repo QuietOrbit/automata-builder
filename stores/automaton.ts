@@ -1,9 +1,11 @@
 import { defineStore } from 'pinia'
 import {
   AutomatonType,
+  EPSILON,
   type Automaton,
   type AutomatonExport,
   type AutomatonState,
+  type AutomatonStoreState,
   type Position,
   type Transition,
 } from '~/types/automaton'
@@ -130,16 +132,26 @@ function buildTransitions(
  * JSON import/export and construction from a formal 5-tuple definition.
  */
 export const useAutomatonStore = defineStore('automaton', {
-  state: (): Automaton => ({
+  state: (): AutomatonStoreState => ({
     id: createId(),
     name: 'Untitled DFA',
     type: AutomatonType.DFA,
-    alphabet: [],
     states: [],
     transitions: [],
   }),
 
   getters: {
+    /** Derived alphabet from all non-epsilon transition symbols, sorted. */
+    alphabet(): string[] {
+      const symbols = new Set<string>()
+      for (const t of this.transitions) {
+        if (t.symbol && t.symbol !== EPSILON) {
+          symbols.add(t.symbol)
+        }
+      }
+      return [...symbols].sort()
+    },
+
     /** The designated start state, or `undefined` if no states exist. */
     startState(): AutomatonState | undefined {
       return this.states.find(s => s.isStart)
@@ -171,6 +183,22 @@ export const useAutomatonStore = defineStore('automaton', {
       return (sourceId: string, targetId: string): boolean => {
         return this.transitions.some(t => t.sourceId === targetId && t.targetId === sourceId)
       }
+    },
+
+    /** Whether the automaton has nondeterminism (multiple transitions from same state on same symbol). */
+    hasNondeterminism(): boolean {
+      const seen = new Set<string>()
+      for (const t of this.transitions) {
+        const key = `${t.sourceId}:${t.symbol}`
+        if (seen.has(key)) return true
+        seen.add(key)
+      }
+      return false
+    },
+
+    /** Whether the automaton has any epsilon transitions. */
+    hasEpsilonTransitions(): boolean {
+      return this.transitions.some(t => t.symbol === EPSILON)
     },
 
     /** Generate the next available state name in the `q0, q1, q2, ...` sequence. */
@@ -221,8 +249,22 @@ export const useAutomatonStore = defineStore('automaton', {
       }
     },
 
-    /** Create a new transition edge between two states for the given symbol. */
+    /**
+     * Create a new transition edge between two states for the given symbol.
+     * In DFA mode, if a transition already exists for (sourceId, symbol),
+     * replaces its target instead of creating a duplicate.
+     */
     addTransition(sourceId: string, targetId: string, symbol: string): Transition {
+      if (this.type === AutomatonType.DFA) {
+        const existing = this.transitions.find(
+          t => t.sourceId === sourceId && t.symbol === symbol,
+        )
+        if (existing) {
+          existing.targetId = targetId
+          return existing
+        }
+      }
+
       const transition: Transition = {
         id: createId(),
         sourceId,
@@ -260,6 +302,15 @@ export const useAutomatonStore = defineStore('automaton', {
       }
     },
 
+    /** Set the automaton type (DFA/NFA) and update the name suffix. */
+    setType(type: AutomatonType) {
+      const oldSuffix = this.type
+      this.type = type
+      if (this.name.endsWith(oldSuffix)) {
+        this.name = this.name.slice(0, -oldSuffix.length) + type
+      }
+    },
+
     /**
      * Replace the entire automaton from a 5-tuple definition.
      *
@@ -284,7 +335,6 @@ export const useAutomatonStore = defineStore('automaton', {
         id: createId(),
         name: data.name || `Untitled ${data.type}`,
         type: data.type,
-        alphabet: [...data.alphabet],
         states,
         transitions,
       })
@@ -293,9 +343,7 @@ export const useAutomatonStore = defineStore('automaton', {
     /** Reset the automaton to its empty initial state. */
     clear() {
       this.id = createId()
-      this.name = 'Untitled DFA'
-      this.type = AutomatonType.DFA
-      this.alphabet = []
+      this.name = `Untitled ${this.type}`
       this.states = []
       this.transitions = []
     },
@@ -322,7 +370,6 @@ export const useAutomatonStore = defineStore('automaton', {
       this.id = a.id
       this.name = a.name
       this.type = a.type
-      this.alphabet = a.alphabet
       this.states = a.states
       this.transitions = a.transitions
     },

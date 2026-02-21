@@ -84,9 +84,9 @@
     </div>
 
     <!-- Current state info -->
-    <div v-if="currentStateName" class="info-row">
-      <span class="info-label">Current State:</span>
-      <span class="info-value mono">{{ currentStateName }}</span>
+    <div v-if="currentStateDisplay" class="info-row">
+      <span class="info-label">{{ sim.currentStateIds.length > 1 ? 'Current States:' : 'Current State:' }}</span>
+      <span class="info-value mono">{{ currentStateDisplay }}</span>
     </div>
 
     <div v-if="sim.status !== SimulationStatus.Idle" class="info-row">
@@ -104,9 +104,14 @@ import { useAutomatonStore } from '~/stores/automaton'
 const sim = useSimulationStore()
 const automaton = useAutomatonStore()
 
-const currentStateName = computed(() => {
-  if (!sim.currentStateId) return null
-  return automaton.getState(sim.currentStateId)?.name ?? null
+const currentStateDisplay = computed(() => {
+  if (sim.currentStateIds.length === 0) return null
+  const names = sim.currentStateIds
+    .map(id => automaton.getState(id)?.name)
+    .filter((n): n is string => n != null)
+  if (names.length === 0) return null
+  if (names.length === 1) return names[0]
+  return `{${names.join(', ')}}`
 })
 
 const statusText = computed(() => {

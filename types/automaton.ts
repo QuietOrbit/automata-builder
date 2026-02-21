@@ -30,6 +30,9 @@ export interface Transition {
   symbol: string
 }
 
+/** The epsilon symbol used for NFA epsilon-transitions. */
+export const EPSILON = 'ε'
+
 /** Discriminator for the type of automaton. */
 export enum AutomatonType {
   DFA = 'DFA',
@@ -52,6 +55,9 @@ export interface Automaton {
   transitions: Transition[]
 }
 
+/** Store state for the automaton — same as Automaton but without alphabet (computed via getter). */
+export type AutomatonStoreState = Omit<Automaton, 'alphabet'>
+
 /** Tracks progression through the simulation state machine. */
 export enum SimulationStatus {
   /** No simulation active (no start state defined). */
@@ -68,12 +74,12 @@ export enum SimulationStatus {
 
 /** A single step in the simulation history, used for step-back functionality. */
 export interface SimulationHistoryEntry {
-  /** The state the simulation was in before this step. */
-  stateId: string
+  /** The state(s) the simulation was in before this step. */
+  stateIds: string[]
   /** The input symbol that was read during this step, or null for the initial entry. */
   symbolRead: string | null
-  /** The transition that was followed, or null if the simulation became stuck. */
-  transitionId: string | null
+  /** The transition(s) that were followed, or empty if the simulation became stuck. */
+  transitionIds: string[]
 }
 
 /** Complete simulation state for stepping through an input string. */
@@ -82,8 +88,8 @@ export interface SimulationState {
   input: string
   /** Index of the next symbol to read from the input string. */
   currentIndex: number
-  /** ID of the state the simulation is currently in, or null if uninitialized. */
-  currentStateId: string | null
+  /** IDs of the state(s) the simulation is currently in. Empty if uninitialized. */
+  currentStateIds: string[]
   /** Current phase of the simulation. */
   status: SimulationStatus
   /** Stack of previous steps, enabling step-back navigation. */

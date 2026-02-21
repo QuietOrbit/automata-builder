@@ -744,6 +744,16 @@ body {
    Tuple Builder
    ======================================== */
 
+/* --- Type Toggle (sidebar header) --- */
+
+.type-toggle-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--color-panel-border);
+}
+
 .tuple-builder {
   padding: 16px;
   display: flex;

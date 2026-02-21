@@ -76,7 +76,7 @@ const isActive = computed(() =>
 const isSimActive = computed(() => {
   if (simulation.status === SimulationStatus.Idle) return false
   const lastEntry = simulation.history[simulation.history.length - 1]
-  return lastEntry?.transitionId != null && transitionIds.value.has(lastEntry.transitionId)
+  return lastEntry?.transitionIds?.some(id => transitionIds.value.has(id)) ?? false
 })
 
 const markerUrl = computed(() => {
