@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia'
 import {
   AutomatonType,
-  type Automaton,
+  EPSILON,
   type AutomatonExport,
   type AutomatonState,
+  type AutomatonStoreState,
   type Position,
   type Transition,
 } from '~/types/automaton'
@@ -34,6 +35,8 @@ export interface TupleData {
 import { createId } from '~/utils/ids'
 import { computeLayout } from '~/utils/layout'
 import type { LayoutTransition } from '~/utils/layout'
+import { buildVisualInfosFromTuple, resolveCollisions } from '~/utils/collision'
+import { useViewportStore } from '~/stores/viewport'
 
 /**
  * Convert the tuple's nested transition map into flat index-based edges
@@ -130,16 +133,26 @@ function buildTransitions(
  * JSON import/export and construction from a formal 5-tuple definition.
  */
 export const useAutomatonStore = defineStore('automaton', {
-  state: (): Automaton => ({
+  state: (): AutomatonStoreState => ({
     id: createId(),
     name: 'Untitled DFA',
     type: AutomatonType.DFA,
-    alphabet: [],
     states: [],
     transitions: [],
   }),
 
   getters: {
+    /** Derived alphabet from all non-epsilon transition symbols, sorted. */
+    alphabet(): string[] {
+      const symbols = new Set<string>()
+      for (const t of this.transitions) {
+        if (t.symbol && t.symbol !== EPSILON) {
+          symbols.add(t.symbol)
+        }
+      }
+      return [...symbols].sort((a, b) => a.localeCompare(b))
+    },
+
     /** The designated start state, or `undefined` if no states exist. */
     startState(): AutomatonState | undefined {
       return this.states.find(s => s.isStart)
@@ -171,6 +184,22 @@ export const useAutomatonStore = defineStore('automaton', {
       return (sourceId: string, targetId: string): boolean => {
         return this.transitions.some(t => t.sourceId === targetId && t.targetId === sourceId)
       }
+    },
+
+    /** Whether the automaton has nondeterminism (multiple transitions from same state on same symbol). */
+    hasNondeterminism(): boolean {
+      const seen = new Set<string>()
+      for (const t of this.transitions) {
+        const key = `${t.sourceId}:${t.symbol}`
+        if (seen.has(key)) return true
+        seen.add(key)
+      }
+      return false
+    },
+
+    /** Whether the automaton has any epsilon transitions. */
+    hasEpsilonTransitions(): boolean {
+      return this.transitions.some(t => t.symbol === EPSILON)
     },
 
     /** Generate the next available state name in the `q0, q1, q2, ...` sequence. */
@@ -221,8 +250,22 @@ export const useAutomatonStore = defineStore('automaton', {
       }
     },
 
-    /** Create a new transition edge between two states for the given symbol. */
+    /**
+     * Create a new transition edge between two states for the given symbol.
+     * In DFA mode, if a transition already exists for (sourceId, symbol),
+     * replaces its target instead of creating a duplicate.
+     */
     addTransition(sourceId: string, targetId: string, symbol: string): Transition {
+      if (this.type === AutomatonType.DFA) {
+        const existing = this.transitions.find(
+          t => t.sourceId === sourceId && t.symbol === symbol,
+        )
+        if (existing) {
+          existing.targetId = targetId
+          return existing
+        }
+      }
+
       const transition: Transition = {
         id: createId(),
         sourceId,
@@ -244,14 +287,6 @@ export const useAutomatonStore = defineStore('automaton', {
       this.transitions = this.transitions.filter(t => !idSet.has(t.id))
     },
 
-    /** Change the symbol on an existing transition. */
-    updateTransitionSymbol(id: string, symbol: string) {
-      const transition = this.transitions.find(t => t.id === id)
-      if (transition) {
-        transition.symbol = symbol
-      }
-    },
-
     /** Redirect an existing transition to a different target state. */
     updateTransitionTarget(id: string, targetId: string) {
       const transition = this.transitions.find(t => t.id === id)
@@ -260,12 +295,22 @@ export const useAutomatonStore = defineStore('automaton', {
       }
     },
 
+    /** Set the automaton type (DFA/NFA) and update the name suffix. */
+    setType(type: AutomatonType) {
+      const oldSuffix = this.type
+      this.type = type
+      if (this.name.endsWith(oldSuffix)) {
+        this.name = this.name.slice(0, -oldSuffix.length) + type
+      }
+    },
+
     /**
      * Replace the entire automaton from a 5-tuple definition.
      *
-     * Computes an auto-layout for state positions, generates unique IDs for
-     * every entity, and applies the result in a single `$patch` so Vue
-     * renders only the final state.
+     * Computes an auto-layout for state positions, resolves visual collisions
+     * (self-loop labels, start arrows, etc.), generates unique IDs for every
+     * entity, and applies the result in a single `$patch` so Vue renders only
+     * the final state. Signals a fit-to-content request afterward.
      */
     buildFromTuple(data: TupleData) {
       const nameToIndex = new Map<string, number>()
@@ -277,6 +322,12 @@ export const useAutomatonStore = defineStore('automaton', {
       const startIndex = nameToIndex.get(data.startState) ?? 0
       const positions = computeLayout(data.states.length, startIndex, layoutTransitions)
 
+      // Resolve visual overlaps before building final state objects
+      const visualInfos = buildVisualInfosFromTuple(
+        data.states, data.startState, data.transitions, positions,
+      )
+      resolveCollisions(positions, visualInfos)
+
       const { states, nameToId } = buildStates(data, positions)
       const transitions = buildTransitions(data.transitions, nameToId)
 
@@ -284,18 +335,17 @@ export const useAutomatonStore = defineStore('automaton', {
         id: createId(),
         name: data.name || `Untitled ${data.type}`,
         type: data.type,
-        alphabet: [...data.alphabet],
         states,
         transitions,
       })
+
+      useViewportStore().requestFitToContent()
     },
 
     /** Reset the automaton to its empty initial state. */
     clear() {
       this.id = createId()
-      this.name = 'Untitled DFA'
-      this.type = AutomatonType.DFA
-      this.alphabet = []
+      this.name = `Untitled ${this.type}`
       this.states = []
       this.transitions = []
     },
@@ -322,7 +372,6 @@ export const useAutomatonStore = defineStore('automaton', {
       this.id = a.id
       this.name = a.name
       this.type = a.type
-      this.alphabet = a.alphabet
       this.states = a.states
       this.transitions = a.transitions
     },

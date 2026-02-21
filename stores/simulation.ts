@@ -1,18 +1,43 @@
 import { defineStore } from 'pinia'
-import type { SimulationHistoryEntry, SimulationState } from '~/types/automaton'
-import { SimulationStatus } from '~/types/automaton'
+import type { SimulationHistoryEntry, SimulationState, Transition } from '~/types/automaton'
+import { AutomatonType, EPSILON, SimulationStatus } from '~/types/automaton'
 import { useAutomatonStore } from '~/stores/automaton'
 
 /**
+ * Compute the epsilon-closure of a set of state IDs.
+ * Follows all ε-transitions reachable from the given states via BFS.
+ *
+ * @param stateIds    - Starting state IDs.
+ * @param transitions - All transitions in the automaton.
+ * @returns Array of all state IDs reachable via zero or more ε-transitions.
+ */
+function epsilonClosure(stateIds: string[], transitions: Transition[]): string[] {
+  const closure = new Set(stateIds)
+  const queue = [...stateIds]
+
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    for (const t of transitions) {
+      if (t.sourceId === current && t.symbol === EPSILON && !closure.has(t.targetId)) {
+        closure.add(t.targetId)
+        queue.push(t.targetId)
+      }
+    }
+  }
+
+  return [...closure]
+}
+
+/**
  * Step-by-step simulation engine for running input strings through the automaton.
- * Maintains a history stack that enables forward stepping, backward stepping,
- * and run-to-completion with an infinite-loop safety counter.
+ * Supports both DFA and NFA simulation. Maintains a history stack that enables
+ * forward stepping, backward stepping, and run-to-completion with a safety counter.
  */
 export const useSimulationStore = defineStore('simulation', {
   state: (): SimulationState => ({
     input: '',
     currentIndex: 0,
-    currentStateId: null,
+    currentStateIds: [],
     status: SimulationStatus.Idle,
     history: [],
   }),
@@ -66,77 +91,117 @@ export const useSimulationStore = defineStore('simulation', {
      */
     reset() {
       this.currentIndex = 0
-      this.currentStateId = null
+      this.currentStateIds = []
       this.history = []
       this.status = SimulationStatus.Idle
     },
 
     /**
      * Advance the simulation by one symbol. If idle, initializes at the start
-     * state first. Finds a matching transition from the current state, records
-     * the step in history, and moves to the target state. If no transition
-     * matches, the simulation enters the stuck state.
+     * state first. Handles both DFA and NFA modes.
      */
     step() {
+      const automaton = useAutomatonStore()
+
       // If idle, initialize simulation at the start state
       if (this.status === SimulationStatus.Idle) {
-        const automaton = useAutomatonStore()
         const start = automaton.startState
         if (!start) return
-        this.currentStateId = start.id
         this.currentIndex = 0
         this.history = []
 
+        if (automaton.type === AutomatonType.NFA) {
+          this.currentStateIds = epsilonClosure([start.id], automaton.transitions)
+        } else {
+          this.currentStateIds = [start.id]
+        }
+
         if (this.input.length === 0) {
-          this.status = start.isAccept ? SimulationStatus.Accepted : SimulationStatus.Rejected
+          const anyAccept = this.currentStateIds.some(id => automaton.getState(id)?.isAccept)
+          this.status = anyAccept ? SimulationStatus.Accepted : SimulationStatus.Rejected
         } else {
           this.status = SimulationStatus.Running
         }
         return
       }
 
-      if (this.status !== SimulationStatus.Running || this.currentStateId === null) return
+      if (this.status !== SimulationStatus.Running || this.currentStateIds.length === 0) return
 
-      const automaton = useAutomatonStore()
       const symbol = this.input[this.currentIndex]
 
-      // Find matching transition
-      const transitions = automaton.getTransitionsFrom(this.currentStateId)
-      const match = transitions.find(t => t.symbol === symbol)
+      if (automaton.type === AutomatonType.DFA) {
+        // DFA: single current state
+        const currentId = this.currentStateIds[0]
+        const transitions = automaton.getTransitionsFrom(currentId)
+        const match = transitions.find(t => t.symbol === symbol)
 
-      // Save history
-      const entry: SimulationHistoryEntry = {
-        stateId: this.currentStateId,
-        symbolRead: symbol,
-        transitionId: match?.id ?? null,
-      }
-      this.history.push(entry)
+        const entry: SimulationHistoryEntry = {
+          stateIds: [currentId],
+          symbolRead: symbol,
+          transitionIds: match ? [match.id] : [],
+        }
+        this.history.push(entry)
 
-      if (!match) {
-        this.status = SimulationStatus.Stuck
-        return
-      }
+        if (!match) {
+          this.status = SimulationStatus.Stuck
+          return
+        }
 
-      // Move to next state
-      this.currentStateId = match.targetId
-      this.currentIndex++
+        this.currentStateIds = [match.targetId]
+        this.currentIndex++
 
-      // Check if we've consumed all input
-      if (this.currentIndex >= this.input.length) {
-        const currentState = automaton.getState(this.currentStateId)
-        this.status = currentState?.isAccept ? SimulationStatus.Accepted : SimulationStatus.Rejected
+        if (this.currentIndex >= this.input.length) {
+          const currentState = automaton.getState(match.targetId)
+          this.status = currentState?.isAccept ? SimulationStatus.Accepted : SimulationStatus.Rejected
+        }
+      } else {
+        // NFA: multiple current states
+        const prevIds = [...this.currentStateIds]
+        const matchedTransitionIds: string[] = []
+        const nextStates = new Set<string>()
+
+        for (const stateId of this.currentStateIds) {
+          for (const t of automaton.getTransitionsFrom(stateId)) {
+            if (t.symbol === symbol) {
+              nextStates.add(t.targetId)
+              matchedTransitionIds.push(t.id)
+            }
+          }
+        }
+
+        const entry: SimulationHistoryEntry = {
+          stateIds: prevIds,
+          symbolRead: symbol,
+          transitionIds: matchedTransitionIds,
+        }
+        this.history.push(entry)
+
+        if (nextStates.size === 0) {
+          this.currentStateIds = []
+          this.status = SimulationStatus.Stuck
+          return
+        }
+
+        // Apply epsilon closure to the new state set
+        this.currentStateIds = epsilonClosure([...nextStates], automaton.transitions)
+        this.currentIndex++
+
+        if (this.currentIndex >= this.input.length) {
+          const anyAccept = this.currentStateIds.some(id => automaton.getState(id)?.isAccept)
+          this.status = anyAccept ? SimulationStatus.Accepted : SimulationStatus.Rejected
+        }
       }
     },
 
     /**
      * Undo the most recent step by popping from the history stack.
-     * Restores the previous state and input position, returning to running status.
+     * Restores the previous state(s) and input position, returning to running status.
      */
     stepBack() {
       if (this.history.length === 0) return
 
       const entry = this.history.pop()!
-      this.currentStateId = entry.stateId
+      this.currentStateIds = entry.stateIds
       this.currentIndex = Math.max(0, this.currentIndex - (entry.symbolRead === null ? 0 : 1))
       this.status = SimulationStatus.Running
     },
