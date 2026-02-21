@@ -11,16 +11,16 @@
  * @module layout
  */
 
-import type { Position } from '~/types/automaton'
+import type { Position } from "~/types/automaton";
 
 /** Directed edge described by indices into the state array. */
 export interface LayoutTransition {
-  sourceIndex: number
-  targetIndex: number
+  sourceIndex: number;
+  targetIndex: number;
 }
 
 /** The three recognised graph shapes. */
-type LayoutKind = 'chain' | 'layered' | 'dense'
+type LayoutKind = "chain" | "layered" | "dense";
 
 /**
  * Run a breadth-first search from {@link start} over the directed graph
@@ -42,22 +42,22 @@ function bfs(
   start: number,
   adjacency: Set<number>[],
 ): Int32Array {
-  const depths = new Int32Array(adjacency.length).fill(-1)
-  depths[start] = 0
-  const queue: number[] = [start]
+  const depths = new Int32Array(adjacency.length).fill(-1);
+  depths[start] = 0;
+  const queue: number[] = [start];
 
   while (queue.length > 0) {
-    const current = queue.shift()!
-    const depth = depths[current]
+    const current = queue.shift()!;
+    const depth = depths[current];
     for (const neighbour of adjacency[current]) {
       if (depths[neighbour] === -1) {
-        depths[neighbour] = depth + 1
-        queue.push(neighbour)
+        depths[neighbour] = depth + 1;
+        queue.push(neighbour);
       }
     }
   }
 
-  return depths
+  return depths;
 }
 
 /**
@@ -74,14 +74,14 @@ function bfs(
  * ```
  */
 function groupByLayer(depths: Int32Array): number[][] {
-  const groups: number[][] = []
+  const groups: number[][] = [];
   for (let i = 0; i < depths.length; i++) {
-    const depth = depths[i]
-    if (depth === -1) continue
-    while (groups.length <= depth) groups.push([])
-    groups[depth].push(i)
+    const depth = depths[i];
+    if (depth === -1) continue;
+    while (groups.length <= depth) groups.push([]);
+    groups[depth].push(i);
   }
-  return groups
+  return groups;
 }
 
 /**
@@ -116,12 +116,12 @@ function hasOverlappingEdges(
   depths: Int32Array,
 ): boolean {
   for (const { sourceIndex, targetIndex } of transitions) {
-    if (sourceIndex === targetIndex) continue
-    if (depths[sourceIndex] === -1 || depths[targetIndex] === -1) continue
-    const diff = depths[targetIndex] - depths[sourceIndex]
-    if (diff !== 1) return true
+    if (sourceIndex === targetIndex) continue;
+    if (depths[sourceIndex] === -1 || depths[targetIndex] === -1) continue;
+    const diff = depths[targetIndex] - depths[sourceIndex];
+    if (diff !== 1) return true;
   }
-  return false
+  return false;
 }
 
 /**
@@ -156,12 +156,12 @@ function classify(
   totalStates: number,
   hasOverlapping: boolean,
 ): LayoutKind {
-  if (layerGroups.length <= 1 && totalStates > 2) return 'dense'
+  if (layerGroups.length <= 1 && totalStates > 2) return "dense";
 
-  const maxWidth = Math.max(...layerGroups.map(g => g.length))
-  if (maxWidth === 1 && !hasOverlapping) return 'chain'
-  if (maxWidth === 1) return 'dense'
-  return 'layered'
+  const maxWidth = Math.max(...layerGroups.map(g => g.length));
+  if (maxWidth === 1 && !hasOverlapping) return "chain";
+  if (maxWidth === 1) return "dense";
+  return "layered";
 }
 
 /**
@@ -176,15 +176,15 @@ function layoutChain(
   spacing: number,
   out: Position[],
 ): void {
-  const count = layerGroups.length
-  const totalWidth = (count - 1) * spacing
-  const offsetX = -totalWidth / 2
+  const count = layerGroups.length;
+  const totalWidth = (count - 1) * spacing;
+  const offsetX = -totalWidth / 2;
 
   for (let i = 0; i < count; i++) {
     out[layerGroups[i][0]] = {
       x: Math.round(offsetX + i * spacing),
       y: 0,
-    }
+    };
   }
 }
 
@@ -206,20 +206,20 @@ function layoutLayered(
   vSpacing: number,
   out: Position[],
 ): void {
-  const cols = layerGroups.length
-  const totalWidth = (cols - 1) * hSpacing
-  const offsetX = -totalWidth / 2
+  const cols = layerGroups.length;
+  const totalWidth = (cols - 1) * hSpacing;
+  const offsetX = -totalWidth / 2;
 
   for (let col = 0; col < cols; col++) {
-    const group = layerGroups[col]
-    const totalHeight = (group.length - 1) * vSpacing
-    const offsetY = -totalHeight / 2
+    const group = layerGroups[col];
+    const totalHeight = (group.length - 1) * vSpacing;
+    const offsetY = -totalHeight / 2;
 
     for (let row = 0; row < group.length; row++) {
       out[group[row]] = {
         x: Math.round(offsetX + col * hSpacing),
         y: Math.round(offsetY + row * vSpacing),
-      }
+      };
     }
   }
 }
@@ -235,15 +235,15 @@ function layoutCircle(
   orderedIndices: number[],
   out: Position[],
 ): void {
-  const count = orderedIndices.length
-  const radius = Math.max(150, (80 * count) / Math.PI)
+  const count = orderedIndices.length;
+  const radius = Math.max(150, (80 * count) / Math.PI);
 
   for (let i = 0; i < count; i++) {
-    const angle = -Math.PI / 2 + (2 * Math.PI * i) / count
+    const angle = -Math.PI / 2 + (2 * Math.PI * i) / count;
     out[orderedIndices[i]] = {
       x: Math.round(radius * Math.cos(angle)),
       y: Math.round(radius * Math.sin(angle)),
-    }
+    };
   }
 }
 
@@ -264,11 +264,11 @@ function buildAdjacency(
   stateCount: number,
   transitions: LayoutTransition[],
 ): Set<number>[] {
-  const adjacency: Set<number>[] = Array.from({ length: stateCount }, () => new Set())
+  const adjacency: Set<number>[] = Array.from({ length: stateCount }, () => new Set());
   for (const { sourceIndex, targetIndex } of transitions) {
-    adjacency[sourceIndex].add(targetIndex)
+    adjacency[sourceIndex].add(targetIndex);
   }
-  return adjacency
+  return adjacency;
 }
 
 /**
@@ -284,15 +284,15 @@ function layoutReachable(
   out: Position[],
 ): void {
   switch (kind) {
-    case 'chain':
-      layoutChain(layerGroups, 150, out)
-      break
-    case 'layered':
-      layoutLayered(layerGroups, 150, 120, out)
-      break
-    case 'dense':
-      layoutCircle(layerGroups.flat(), out)
-      break
+    case "chain":
+      layoutChain(layerGroups, 150, out);
+      break;
+    case "layered":
+      layoutLayered(layerGroups, 150, 120, out);
+      break;
+    case "dense":
+      layoutCircle(layerGroups.flat(), out);
+      break;
   }
 }
 
@@ -308,23 +308,23 @@ function layoutUnreachable(
   positions: Position[],
   depths: Int32Array,
 ): void {
-  let maxY = -Infinity
+  let maxY = -Infinity;
   for (let i = 0; i < depths.length; i++) {
     if (depths[i] !== -1 && positions[i].y > maxY) {
-      maxY = positions[i].y
+      maxY = positions[i].y;
     }
   }
-  if (maxY === -Infinity) maxY = 0
+  if (maxY === -Infinity) maxY = 0;
 
-  const unreachableY = maxY + 150
-  const totalWidth = (unreachable.length - 1) * 150
-  const offsetX = -totalWidth / 2
+  const unreachableY = maxY + 150;
+  const totalWidth = (unreachable.length - 1) * 150;
+  const offsetX = -totalWidth / 2;
 
   for (let i = 0; i < unreachable.length; i++) {
     positions[unreachable[i]] = {
       x: Math.round(offsetX + i * 150),
       y: unreachableY,
-    }
+    };
   }
 }
 
@@ -362,21 +362,21 @@ export function computeLayout(
   startIndex: number,
   transitions: LayoutTransition[],
 ): Position[] {
-  const adjacency = buildAdjacency(stateCount, transitions)
-  const depths = bfs(startIndex, adjacency)
-  const layerGroups = groupByLayer(depths)
-  const kind = classify(layerGroups, stateCount, hasOverlappingEdges(transitions, depths))
+  const adjacency = buildAdjacency(stateCount, transitions);
+  const depths = bfs(startIndex, adjacency);
+  const layerGroups = groupByLayer(depths);
+  const kind = classify(layerGroups, stateCount, hasOverlappingEdges(transitions, depths));
 
-  const positions: Position[] = new Array(stateCount)
-  layoutReachable(kind, layerGroups, positions)
+  const positions: Position[] = new Array(stateCount);
+  layoutReachable(kind, layerGroups, positions);
 
-  const unreachable: number[] = []
+  const unreachable: number[] = [];
   for (let i = 0; i < stateCount; i++) {
-    if (depths[i] === -1) unreachable.push(i)
+    if (depths[i] === -1) unreachable.push(i);
   }
   if (unreachable.length > 0) {
-    layoutUnreachable(unreachable, positions, depths)
+    layoutUnreachable(unreachable, positions, depths);
   }
 
-  return positions
+  return positions;
 }

@@ -57,15 +57,15 @@ Keep commits focused — one logical change per commit.
 1. Create a GitHub issue for the work
 2. Branch off `main` using the `type/issue-N-description` format
 3. Make your changes
-4. Run `npx tsc --noEmit` and `npm run build` locally to catch errors early
+4. Run `npm run lint`, `npx tsc --noEmit`, and `npm run build` locally to catch errors early
 5. Push your branch and open a PR
 6. Fill out the PR template (link the issue with `Closes #N`)
-7. CI must pass (type-check + build + branch naming)
+7. CI must pass (lint + type-check + build + branch naming)
 8. Wait for review from a code owner
 
 ## Code Style
 
-This project doesn't have a linter configured yet, so please follow these conventions manually:
+ESLint enforces the project's style conventions automatically. Run `npm run lint` to check and `npm run lint:fix` to auto-fix. The rules below are what the linter enforces:
 
 ### TypeScript
 

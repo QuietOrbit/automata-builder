@@ -11,12 +11,12 @@
 </template>
 
 <script setup lang="ts">
-import type { AutomatonState } from '~/types/automaton'
-import { STATE_RADIUS, computeStartArrowPath } from '~/utils/geometry'
+import type { AutomatonState } from "~/types/automaton";
+import { STATE_RADIUS, computeStartArrowPath } from "~/utils/geometry";
 
 const props = defineProps<{
-  state: AutomatonState
-}>()
+  state: AutomatonState;
+}>();
 
-const path = computed(() => computeStartArrowPath(props.state.position, STATE_RADIUS))
+const path = computed(() => computeStartArrowPath(props.state.position, STATE_RADIUS));
 </script>
