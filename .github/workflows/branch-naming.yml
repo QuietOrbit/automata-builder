@@ -1,0 +1,46 @@
+# Enforces the type/issue-N-description branch naming convention.
+# This is a CI workflow because GitHub's branch_name_pattern ruleset
+# requires a paid plan, and we're not paying just to name our branches.
+name: Branch naming
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches-ignore: [main]
+
+jobs:
+  check-branch-name:
+    name: Check branch name
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract branch name
+        id: branch
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BRANCH="$HEAD_REF"
+          else
+            BRANCH="${GITHUB_REF#refs/heads/}"
+          fi
+          echo "name=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Validate branch name
+        env:
+          BRANCH: ${{ steps.branch.outputs.name }}
+        run: |
+          PATTERN='^(feat|fix|docs|refactor|chore)/issue-[0-9]+-.+$'
+
+          if [[ ! "$BRANCH" =~ $PATTERN ]]; then
+            echo "::error::Branch name '$BRANCH' does not match the required pattern."
+            echo ""
+            echo "Expected format: type/issue-N-description"
+            echo "  Types: feat, fix, docs, refactor, chore"
+            echo "  Example: feat/issue-12-undo-redo"
+            echo ""
+            echo "Create a GitHub issue first, then name your branch accordingly."
+            exit 1
+          fi
+
+          echo "Branch name '$BRANCH' is valid."
