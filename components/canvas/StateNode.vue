@@ -3,6 +3,7 @@
     class="state-node"
     :class="{
       'selected': isSelected,
+      'is-hover-target': isHoverTarget,
       'is-current': isSimCurrent,
       'is-accepted': isSimAccepted,
       'is-rejected': isSimRejected,
@@ -11,6 +12,8 @@
     :transform="`translate(${state.position.x}, ${state.position.y})`"
     style="cursor: pointer"
     @pointerdown.stop="onPointerDown"
+    @pointerenter="onPointerEnter"
+    @pointerleave="onPointerLeave"
     @click.stop
   >
     <!-- Accept state: outer ring -->
@@ -44,6 +47,7 @@ import { SimulationStatus } from "~/types/automaton";
 import { STATE_RADIUS } from "~/utils/geometry";
 import { useSelectionStore } from "~/stores/selection";
 import { useSimulationStore } from "~/stores/simulation";
+import { useHoverStore } from "~/stores/hover";
 
 const props = defineProps<{
   state: AutomatonState;
@@ -55,8 +59,13 @@ const emit = defineEmits<{
 
 const selection = useSelectionStore();
 const simulation = useSimulationStore();
+const hover = useHoverStore();
 
 const isSelected = computed(() => selection.selectedStateId === props.state.id);
+const isHoverTarget = computed(
+  () => hover.hoveredStateId === props.state.id
+    && selection.selectedStateId !== props.state.id,
+);
 const isSimCurrent = computed(
   () => simulation.status !== SimulationStatus.Idle && simulation.currentStateIds.includes(props.state.id) && simulation.status === SimulationStatus.Running,
 );
@@ -81,5 +90,15 @@ function onPointerDown(event: PointerEvent) {
   if (event.button !== 0) return;
   selection.selectState(props.state.id);
   emit("dragstart", props.state.id, event);
+}
+
+function onPointerEnter() {
+  if (selection.selectedStateId !== null && selection.selectedStateId !== props.state.id) {
+    hover.setHoveredState(props.state.id);
+  }
+}
+
+function onPointerLeave() {
+  hover.clearHoveredState();
 }
 </script>
