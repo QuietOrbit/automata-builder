@@ -3,7 +3,7 @@
 [![CI](https://github.com/QuietOrbit/automata-builder/actions/workflows/ci.yml/badge.svg)](https://github.com/QuietOrbit/automata-builder/actions/workflows/ci.yml)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 
-A visual DFA/NFA builder and simulator for Theory of Computation courses. Construct automata on an interactive SVG canvas, define them with a formal 5-tuple, and step through input strings to test acceptance.
+A visual DFA/NFA builder and simulator for Automata Theory. Construct automata on an interactive SVG canvas, define them with a formal 5-tuple, and step through input strings to test acceptance.
 
 **[Try it live](https://quietorbit.github.io/automata-builder/)**
 
