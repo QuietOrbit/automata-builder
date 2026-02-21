@@ -1,0 +1,46 @@
+"area: canvas":
+  - changed-files:
+      - any-glob-to-any-file:
+          - components/canvas/**
+          - composables/useCanvasInteraction.ts
+          - composables/useDragState.ts
+          - composables/useTransitionRouting.ts
+          - utils/geometry.ts
+
+"area: simulation":
+  - changed-files:
+      - any-glob-to-any-file:
+          - stores/simulation.ts
+          - composables/useSimulation.ts
+          - components/simulation/**
+
+"area: nfa":
+  - changed-files:
+      - any-glob-to-any-file:
+          - stores/simulation.ts
+          - stores/automaton.ts
+
+"area: export":
+  - changed-files:
+      - any-glob-to-any-file:
+          - utils/export.ts
+
+"area: ui":
+  - changed-files:
+      - any-glob-to-any-file:
+          - components/ui/**
+          - assets/css/**
+
+"area: 5-tuple":
+  - changed-files:
+      - any-glob-to-any-file:
+          - components/editor/TupleBuilder.vue
+          - utils/layout.ts
+
+"ci/infra":
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/**
+          - nuxt.config.ts
+          - package.json
+          - tsconfig.json

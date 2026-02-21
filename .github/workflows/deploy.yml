@@ -27,7 +27,8 @@ jobs:
 
       - run: npm ci
 
-      - run: npx nuxi generate
+      - name: Generate static site
+        run: npx nuxi generate
 
       - uses: actions/upload-pages-artifact@v3
         with:
