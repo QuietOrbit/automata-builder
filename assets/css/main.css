@@ -317,8 +317,35 @@ body {
   min-width: 0;
 }
 
+.resize-handle {
+  width: 6px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+  z-index: 10;
+}
+
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 2px;
+  width: 2px;
+  height: 100%;
+  background: transparent;
+  transition: background-color 0.15s;
+}
+
+.resize-handle:hover::after {
+  background: var(--color-panel-border);
+}
+
+.resize-handle:active::after {
+  background: var(--color-state-selected);
+}
+
 .side-panel {
-  width: var(--panel-width);
   flex-shrink: 0;
   border-left: 1px solid var(--color-panel-border);
   background: var(--color-panel-bg);
