@@ -28,8 +28,7 @@
           </button>
         </div>
       </div>
-      <StateEditor v-if="selection.selectedStateId" />
-      <TupleBuilder v-else />
+      <TupleBuilder />
       <SimulationPanel />
     </aside>
   </div>
@@ -37,12 +36,10 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { useSelectionStore } from "~/stores/selection";
 import { useAutomatonStore } from "~/stores/automaton";
 import { useSimulationStore } from "~/stores/simulation";
 import { AutomatonType } from "~/types/automaton";
 
-const selection = useSelectionStore();
 const automaton = useAutomatonStore();
 const simulation = useSimulationStore();
 

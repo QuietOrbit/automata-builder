@@ -120,10 +120,21 @@
         @dragstart="onStateDragStart"
       />
     </svg>
+
+    <StateBubble
+      v-for="s in visibleBubbleStates"
+      :key="s.id"
+      :state="s"
+      :world-to-screen="worldToScreen"
+      :svg-el="svgRef"
+      :is-dragging="isDragging"
+      :zoom="zoom"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
+import type { AutomatonState } from "~/types/automaton";
 import { useAutomatonStore } from "~/stores/automaton";
 import { useSelectionStore } from "~/stores/selection";
 import { useViewportStore } from "~/stores/viewport";
@@ -149,9 +160,20 @@ const transitionGroups = computed(() => {
 });
 
 const svgRef = ref<SVGSVGElement | null>(null);
-const { viewBox, screenToWorld, onWheel, onPanStart, onPanMove, onPanEnd, fitToContent }
+const { viewBox, screenToWorld, worldToScreen, zoom, onWheel, onPanStart, onPanMove, onPanEnd, fitToContent }
   = useCanvasInteraction(svgRef);
 const { isDragging, onDragStart, onDragMove, onDragEnd } = useDragState(screenToWorld);
+
+/** All states that should have a visible bubble (pinned + active selection, deduplicated). */
+const visibleBubbleStates = computed(() => {
+  const ids = new Set<string>(selection.pinnedStateIds);
+  if (selection.selectedStateId) {
+    ids.add(selection.selectedStateId);
+  }
+  return [...ids]
+    .map(id => automaton.getState(id))
+    .filter((s): s is AutomatonState => s != null);
+});
 
 // Fit-to-content when signaled by the viewport store (e.g. after build/relayout)
 watch(() => viewport.fitRequestId, () => {
@@ -207,18 +229,23 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
 
 function onKeyDown(event: KeyboardEvent) {
   const tag = (event.target as HTMLElement)?.tagName;
-  if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
 
   if (event.key === "Escape") {
-    selection.clearSelection();
+    selection.closeAll();
+    (event.target as HTMLElement)?.blur();
+    return;
   }
-  else if (event.key === "Delete" || event.key === "Backspace") {
+
+  if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+
+  if (event.key === "Delete" || event.key === "Backspace") {
     onDelete();
   }
 }
 
 function onDelete() {
   if (selection.selectedStateId) {
+    selection.unpinState(selection.selectedStateId);
     automaton.removeState(selection.selectedStateId);
     selection.clearSelection();
   }

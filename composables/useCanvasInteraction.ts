@@ -55,6 +55,23 @@ export function useCanvasInteraction(svgRef: Ref<SVGSVGElement | null>) {
   }
 
   /**
+   * Convert world (SVG canvas) coordinates to screen (client) coordinates.
+   * Inverse of {@link screenToWorld}.
+   * @param worldX - X position in SVG world space.
+   * @param worldY - Y position in SVG world space.
+   * @returns The corresponding position in client (screen) space.
+   */
+  function worldToScreen(worldX: number, worldY: number): Position {
+    const svgEl = svgRef.value;
+    if (!svgEl) return { x: worldX, y: worldY };
+    const rect = svgEl.getBoundingClientRect();
+    return {
+      x: (worldX - pan.x) * zoom.value + rect.left,
+      y: (worldY - pan.y) * zoom.value + rect.top,
+    };
+  }
+
+  /**
    * Handle mouse wheel events for zooming. Zooms toward the cursor position
    * so the point under the cursor stays fixed.
    */
@@ -158,6 +175,7 @@ export function useCanvasInteraction(svgRef: Ref<SVGSVGElement | null>) {
     viewBox,
     isPanning,
     screenToWorld,
+    worldToScreen,
     onWheel,
     onPanStart,
     onPanMove,
