@@ -3,21 +3,71 @@
     v-show="!isDragging"
     ref="bubbleRef"
     class="state-bubble"
-    :class="{ 'bubble-below': isBelow }"
     :style="bubbleStyle"
     @pointerdown.stop
     @click.stop
   >
-    <div class="bubble-tail" />
+    <!-- Drag header -->
+    <div
+      class="bubble-header"
+      :class="{ 'is-dragging-header': isDraggingBubble }"
+      @pointerdown="onHeaderPointerDown"
+    >
+      <span class="bubble-header-title mono">{{ state.name }}</span>
+      <div class="bubble-header-actions">
+        <button
+          class="bubble-pin"
+          :class="{ active: isThisPinned }"
+          title="Pin bubble (keep open on canvas click)"
+          @pointerdown.stop
+          @click.stop="selection.togglePin(state.id)"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+          >
+            <path
+              d="M7 1v4M4.5 5h5l-.75 3.5H5.25L4.5 5ZM5.25 8.5L5 13M8.75 8.5L9 13"
+              stroke="currentColor"
+              stroke-width="1.3"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+        <button
+          class="bubble-close"
+          title="Close"
+          @pointerdown.stop
+          @click.stop="closeBubble"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+          >
+            <path
+              d="M3 3l8 8M11 3l-8 8"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
 
     <!-- Name -->
     <div class="bubble-field">
       <label
         class="field-label"
-        for="bubble-name-input"
+        :for="'bubble-name-input-' + state.id"
       >Name</label>
       <input
-        id="bubble-name-input"
+        :id="'bubble-name-input-' + state.id"
         class="input input-mono"
         :value="state.name"
         @input="onNameInput"
@@ -97,6 +147,7 @@ import { AutomatonType } from "~/types/automaton";
 import { STATE_RADIUS } from "~/utils/geometry";
 import { useAutomatonStore } from "~/stores/automaton";
 import { useSelectionStore } from "~/stores/selection";
+import { getBubbleOffset, setBubbleOffset } from "~/composables/useBubbleOffsets";
 
 const props = defineProps<{
   state: AutomatonState;
@@ -112,10 +163,28 @@ const selection = useSelectionStore();
 const bubbleRef = ref<HTMLElement | null>(null);
 const bubbleWidth = ref(0);
 const bubbleHeight = ref(0);
-const isBelow = ref(false);
 
 /** Gap between state circle edge and bubble in screen pixels. */
-const BUBBLE_GAP = 10;
+const BUBBLE_GAP = 12;
+const EDGE_PADDING = 8;
+
+const isThisPinned = computed(() => selection.isStatePinned(props.state.id));
+
+// --- Per-instance drag state ---
+
+const isDraggingBubble = ref(false);
+let dragStartPointer = { x: 0, y: 0 };
+let dragStartOffset = { x: 0, y: 0 };
+
+// --- Position memory helpers ---
+
+function getOffset(): { x: number; y: number } {
+  return getBubbleOffset(props.state.id);
+}
+
+function setOffset(x: number, y: number) {
+  setBubbleOffset(props.state.id, x, y);
+}
 
 // Track bubble dimensions via ResizeObserver
 let resizeObserver: ResizeObserver | null = null;
@@ -139,44 +208,91 @@ watch(bubbleRef, (el) => {
   if (el) resizeObserver?.observe(el);
 });
 
-const bubbleStyle = computed(() => {
+/** Compute the default (un-offset) anchor position: upper-right of state. */
+function computeDefaultAnchor(): { left: number; top: number } {
   const screenPos = props.worldToScreen(props.state.position.x, props.state.position.y);
   const radiusInPx = STATE_RADIUS * props.zoom;
 
-  // SVG bounding rect for edge clamping
+  const left = screenPos.x + radiusInPx + BUBBLE_GAP;
+  const top = screenPos.y - bubbleHeight.value / 2;
+  return { left, top };
+}
+
+/** Clamp a position so the bubble stays within the canvas bounds. */
+function clampToCanvas(left: number, top: number): { left: number; top: number } {
   const svgRect = props.svgEl?.getBoundingClientRect();
   const canvasLeft = svgRect?.left ?? 0;
   const canvasRight = svgRect?.right ?? window.innerWidth;
   const canvasTop = svgRect?.top ?? 0;
+  const canvasBottom = svgRect?.bottom ?? window.innerHeight;
 
-  // Try above first
-  let top = screenPos.y - radiusInPx - BUBBLE_GAP - bubbleHeight.value;
-  if (top < canvasTop) {
-    // Flip below
-    top = screenPos.y + radiusInPx + BUBBLE_GAP;
-    isBelow.value = true;
+  let clampedLeft = left;
+  let clampedTop = top;
+
+  if (clampedLeft < canvasLeft + EDGE_PADDING) {
+    clampedLeft = canvasLeft + EDGE_PADDING;
   }
-  else {
-    isBelow.value = false;
+  else if (clampedLeft + bubbleWidth.value > canvasRight - EDGE_PADDING) {
+    clampedLeft = canvasRight - EDGE_PADDING - bubbleWidth.value;
   }
 
-  // Center horizontally, then clamp
-  let left = screenPos.x - bubbleWidth.value / 2;
-  const EDGE_PADDING = 8;
-  if (left < canvasLeft + EDGE_PADDING) {
-    left = canvasLeft + EDGE_PADDING;
+  if (clampedTop < canvasTop + EDGE_PADDING) {
+    clampedTop = canvasTop + EDGE_PADDING;
   }
-  else if (left + bubbleWidth.value > canvasRight - EDGE_PADDING) {
-    left = canvasRight - EDGE_PADDING - bubbleWidth.value;
+  else if (clampedTop + bubbleHeight.value > canvasBottom - EDGE_PADDING) {
+    clampedTop = canvasBottom - EDGE_PADDING - bubbleHeight.value;
   }
+
+  return { left: clampedLeft, top: clampedTop };
+}
+
+const bubbleStyle = computed(() => {
+  const anchor = computeDefaultAnchor();
+  const offset = getOffset();
+  const rawLeft = anchor.left + offset.x;
+  const rawTop = anchor.top + offset.y;
+  const clamped = clampToCanvas(rawLeft, rawTop);
 
   return {
-    top: `${top}px`,
-    left: `${left}px`,
+    top: `${clamped.top}px`,
+    left: `${clamped.left}px`,
   };
 });
 
-// --- Transitions logic (mirrored from StateEditor) ---
+// --- Bubble drag handlers ---
+
+function onHeaderPointerDown(event: PointerEvent) {
+  isDraggingBubble.value = true;
+  dragStartPointer = { x: event.clientX, y: event.clientY };
+  const current = getOffset();
+  dragStartOffset = { x: current.x, y: current.y };
+  document.addEventListener("pointermove", onBubblePointerMove);
+  document.addEventListener("pointerup", onBubblePointerUp);
+}
+
+function onBubblePointerMove(event: PointerEvent) {
+  setOffset(
+    dragStartOffset.x + (event.clientX - dragStartPointer.x),
+    dragStartOffset.y + (event.clientY - dragStartPointer.y),
+  );
+}
+
+function onBubblePointerUp() {
+  isDraggingBubble.value = false;
+  document.removeEventListener("pointermove", onBubblePointerMove);
+  document.removeEventListener("pointerup", onBubblePointerUp);
+}
+
+// --- Close / pin ---
+
+function closeBubble() {
+  selection.unpinState(props.state.id);
+  if (selection.selectedStateId === props.state.id) {
+    selection.clearSelection();
+  }
+}
+
+// --- Transitions logic ---
 
 const transitions = computed(() => automaton.getTransitionsFrom(props.state.id));
 const isDFA = computed(() => automaton.type === AutomatonType.DFA);
@@ -222,7 +338,10 @@ function toggleAccept() {
 }
 
 function deleteState() {
+  selection.unpinState(props.state.id);
   automaton.removeState(props.state.id);
-  selection.clearSelection();
+  if (selection.selectedStateId === props.state.id) {
+    selection.clearSelection();
+  }
 }
 </script>

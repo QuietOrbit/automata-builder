@@ -122,8 +122,9 @@
     </svg>
 
     <StateBubble
-      v-if="selectedState"
-      :state="selectedState"
+      v-for="s in visibleBubbleStates"
+      :key="s.id"
+      :state="s"
       :world-to-screen="worldToScreen"
       :svg-el="svgRef"
       :is-dragging="isDragging"
@@ -133,6 +134,7 @@
 </template>
 
 <script setup lang="ts">
+import type { AutomatonState } from "~/types/automaton";
 import { useAutomatonStore } from "~/stores/automaton";
 import { useSelectionStore } from "~/stores/selection";
 import { useViewportStore } from "~/stores/viewport";
@@ -162,9 +164,15 @@ const { viewBox, screenToWorld, worldToScreen, zoom, onWheel, onPanStart, onPanM
   = useCanvasInteraction(svgRef);
 const { isDragging, onDragStart, onDragMove, onDragEnd } = useDragState(screenToWorld);
 
-const selectedState = computed(() => {
-  if (!selection.selectedStateId) return null;
-  return automaton.getState(selection.selectedStateId);
+/** All states that should have a visible bubble (pinned + active selection, deduplicated). */
+const visibleBubbleStates = computed(() => {
+  const ids = new Set<string>(selection.pinnedStateIds);
+  if (selection.selectedStateId) {
+    ids.add(selection.selectedStateId);
+  }
+  return [...ids]
+    .map(id => automaton.getState(id))
+    .filter((s): s is AutomatonState => s != null);
 });
 
 // Fit-to-content when signaled by the viewport store (e.g. after build/relayout)
@@ -223,7 +231,7 @@ function onKeyDown(event: KeyboardEvent) {
   const tag = (event.target as HTMLElement)?.tagName;
 
   if (event.key === "Escape") {
-    selection.clearSelection();
+    selection.closeAll();
     (event.target as HTMLElement)?.blur();
     return;
   }
@@ -237,6 +245,7 @@ function onKeyDown(event: KeyboardEvent) {
 
 function onDelete() {
   if (selection.selectedStateId) {
+    selection.unpinState(selection.selectedStateId);
     automaton.removeState(selection.selectedStateId);
     selection.clearSelection();
   }
