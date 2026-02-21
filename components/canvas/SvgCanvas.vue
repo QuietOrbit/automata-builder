@@ -120,6 +120,15 @@
         @dragstart="onStateDragStart"
       />
     </svg>
+
+    <StateBubble
+      v-if="selectedState"
+      :state="selectedState"
+      :world-to-screen="worldToScreen"
+      :svg-el="svgRef"
+      :is-dragging="isDragging"
+      :zoom="zoom"
+    />
   </div>
 </template>
 
@@ -149,9 +158,14 @@ const transitionGroups = computed(() => {
 });
 
 const svgRef = ref<SVGSVGElement | null>(null);
-const { viewBox, screenToWorld, onWheel, onPanStart, onPanMove, onPanEnd, fitToContent }
+const { viewBox, screenToWorld, worldToScreen, zoom, onWheel, onPanStart, onPanMove, onPanEnd, fitToContent }
   = useCanvasInteraction(svgRef);
 const { isDragging, onDragStart, onDragMove, onDragEnd } = useDragState(screenToWorld);
+
+const selectedState = computed(() => {
+  if (!selection.selectedStateId) return null;
+  return automaton.getState(selection.selectedStateId);
+});
 
 // Fit-to-content when signaled by the viewport store (e.g. after build/relayout)
 watch(() => viewport.fitRequestId, () => {
@@ -207,12 +221,16 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
 
 function onKeyDown(event: KeyboardEvent) {
   const tag = (event.target as HTMLElement)?.tagName;
-  if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
 
   if (event.key === "Escape") {
     selection.clearSelection();
+    (event.target as HTMLElement)?.blur();
+    return;
   }
-  else if (event.key === "Delete" || event.key === "Backspace") {
+
+  if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+
+  if (event.key === "Delete" || event.key === "Backspace") {
     onDelete();
   }
 }
