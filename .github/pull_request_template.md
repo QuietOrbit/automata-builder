@@ -17,12 +17,4 @@
 
 ## Related Issues
 
-<!-- Link any related issues: Closes #123, Fixes #456 -->
-
-## Code Style Checklist
-
-- [ ] Enums used instead of raw string literals for keys and discriminators
-- [ ] `Number.isNaN()` / `Number.isFinite()` used instead of global equivalents
-- [ ] CSS custom properties used for colors (no hardcoded values)
-- [ ] Pinia stores used as single source of truth (no component-local state for shared data)
-- [ ] JSDoc added or updated for any new/modified exports
+Closes #

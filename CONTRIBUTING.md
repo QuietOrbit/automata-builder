@@ -19,7 +19,7 @@ We use **trunk-based development**: `main` is the production branch, and all wor
 
 ### Branch naming
 
-Use the format `type/description` or `type/issue-N-description`:
+Every branch must be linked to a GitHub issue. Use the format `type/issue-N-description`:
 
 | Prefix | Use for |
 |-----------|------------------------------|
@@ -30,9 +30,13 @@ Use the format `type/description` or `type/issue-N-description`:
 | `chore/` | Build, CI, tooling changes |
 
 Examples:
-- `feat/undo-redo`
+- `feat/issue-12-undo-redo`
 - `fix/issue-42-arrow-offset`
-- `docs/update-readme`
+- `docs/issue-7-update-readme`
+
+**Workflow:** Create a GitHub issue first, then branch from it.
+
+> A CI check enforces this naming convention — pushes and PRs with non-conforming branch names will fail the `"Check branch name"` status check.
 
 ## Commits
 
@@ -50,13 +54,14 @@ Keep commits focused — one logical change per commit.
 
 ## Pull Requests
 
-1. Branch off `main`
-2. Make your changes
-3. Run `npx tsc --noEmit` and `npm run build` locally to catch errors early
-4. Push your branch and open a PR
-5. Fill out the PR template
-6. CI must pass (type-check + build)
-7. Wait for review from a code owner
+1. Create a GitHub issue for the work
+2. Branch off `main` using the `type/issue-N-description` format
+3. Make your changes
+4. Run `npx tsc --noEmit` and `npm run build` locally to catch errors early
+5. Push your branch and open a PR
+6. Fill out the PR template (link the issue with `Closes #N`)
+7. CI must pass (type-check + build + branch naming)
+8. Wait for review from a code owner
 
 ## Code Style
 
