@@ -24,6 +24,7 @@
   --color-state-text: #111827;
   --color-state-selected: #3b82f6;
   --color-state-accept-ring: #374151;
+  --color-state-hover-target: #a855f7;
 
   /* Transitions */
   --color-transition-stroke: #6b7280;
@@ -73,6 +74,7 @@
   --color-state-text: #e2e8f0;
   --color-state-selected: #818cf8;
   --color-state-accept-ring: #a5b4fc;
+  --color-state-hover-target: #c084fc;
 
   --color-transition-stroke: #94a3b8;
   --color-transition-text: #cbd5e1;
@@ -482,6 +484,17 @@ body {
   stroke: var(--color-state-selected);
 }
 
+/* Hover target (potential transition target while editing) */
+.is-hover-target .state-circle {
+  stroke: var(--color-state-hover-target);
+  stroke-width: 3;
+  fill: color-mix(in srgb, var(--color-state-hover-target) 15%, var(--color-state-fill));
+}
+
+.is-hover-target .accept-ring {
+  stroke: var(--color-state-hover-target);
+}
+
 /* Simulation states */
 .is-current,
 .is-accepted,
@@ -849,23 +862,6 @@ body {
   padding: 2px !important;
 }
 
-.tuple-cell-select {
-  width: 100%;
-  padding: 3px 4px;
-  border: none;
-  background: transparent;
-  color: var(--color-text-primary);
-  font-family: var(--font-mono), monospace;
-  font-size: 12px;
-  text-align: center;
-  cursor: pointer;
-  outline: none;
-}
-
-.tuple-cell-select:focus {
-  background: var(--color-input-bg);
-}
-
 .tuple-cell-multi {
   cursor: pointer;
   padding: 3px 4px;
@@ -931,8 +927,21 @@ body {
   background: var(--color-panel-border);
 }
 
-.tuple-dropdown-item input[type="checkbox"] {
-  accent-color: var(--color-button-bg);
+.tuple-dropdown-check {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  color: var(--color-button-bg);
+}
+
+.tuple-dropdown-item.is-checked {
+  color: var(--color-button-bg);
+  font-weight: 600;
+}
+
+.tuple-dropdown-item.is-selected {
+  color: var(--color-button-bg);
+  font-weight: 600;
 }
 
 /* --- Validation error --- */

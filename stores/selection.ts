@@ -1,4 +1,5 @@
 import { defineStore } from "pinia";
+import { useHoverStore } from "~/stores/hover";
 
 /** Internal state for the selection store. */
 interface SelectionState {
@@ -26,12 +27,14 @@ export const useSelectionStore = defineStore("selection", {
     selectState(id: string) {
       this.selectedStateId = id;
       this.selectedTransitionId = null;
+      useHoverStore().clearHoveredState();
     },
 
     /** Clear all selections, returning to the default (nothing selected) state. */
     clearSelection() {
       this.selectedStateId = null;
       this.selectedTransitionId = null;
+      useHoverStore().clearHoveredState();
     },
   },
 });

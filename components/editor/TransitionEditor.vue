@@ -4,19 +4,12 @@
     v-if="fixedTarget"
     class="transition-row"
   >
-    <select
-      class="select target-select"
-      :value="fixedTarget"
+    <TargetSelect
+      :model-value="fixedTarget"
+      :options="availableTargets"
+      narrow
       disabled
-    >
-      <option
-        v-for="s in availableTargets"
-        :key="s.id"
-        :value="s.id"
-      >
-        {{ s.name }}
-      </option>
-    </select>
+    />
 
     <input
       class="input input-mono symbols-input"
@@ -33,25 +26,12 @@
     v-else-if="transitions.length > 0"
     class="transition-row"
   >
-    <select
-      class="select target-select"
-      :value="transitions[0].targetId"
-      @change="onTargetChange"
-    >
-      <option
-        value=""
-        disabled
-      >
-        Target...
-      </option>
-      <option
-        v-for="s in availableTargets"
-        :key="s.id"
-        :value="s.id"
-      >
-        {{ s.name }}
-      </option>
-    </select>
+    <TargetSelect
+      :model-value="transitions[0].targetId"
+      :options="availableTargets"
+      narrow
+      @update:model-value="onTargetChange"
+    />
 
     <input
       ref="existingSymbolsRef"
@@ -97,26 +77,12 @@
     v-else
     class="transition-row"
   >
-    <select
-      class="select target-select"
-      :value="newTarget"
-      @change="onNewTargetChange"
-    >
-      <option
-        value=""
-        disabled
-        selected
-      >
-        Target...
-      </option>
-      <option
-        v-for="s in availableTargets"
-        :key="s.id"
-        :value="s.id"
-      >
-        {{ s.name }}
-      </option>
-    </select>
+    <TargetSelect
+      :model-value="newTarget"
+      :options="availableTargets"
+      narrow
+      @update:model-value="onNewTargetChange"
+    />
 
     <input
       class="input input-mono symbols-input"
@@ -216,8 +182,7 @@ function addEpsilonToExisting() {
 
 // --- NFA existing group handlers ---
 
-function onTargetChange(event: Event) {
-  const targetId = (event.target as HTMLSelectElement).value;
+function onTargetChange(targetId: string) {
   if (!targetId) return;
   for (const t of props.transitions) {
     automaton.updateTransitionTarget(t.id, targetId);
@@ -263,8 +228,8 @@ function removeGroup() {
 const newTarget = ref("");
 const newSymbols = ref("");
 
-function onNewTargetChange(event: Event) {
-  newTarget.value = (event.target as HTMLSelectElement).value;
+function onNewTargetChange(value: string) {
+  newTarget.value = value;
   tryCreateTransitions();
 }
 
