@@ -2,7 +2,7 @@
   <header class="app-header">
     <div class="header-left">
       <h1 class="app-title">Automata Builder</h1>
-      <span class="app-badge">DFA</span>
+      <span class="app-badge">{{ automaton.type }}</span>
     </div>
 
     <div class="header-actions">

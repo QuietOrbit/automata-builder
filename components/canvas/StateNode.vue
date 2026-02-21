@@ -55,16 +55,16 @@ const simulation = useSimulationStore()
 
 const isSelected = computed(() => selection.selectedStateId === props.state.id)
 const isSimCurrent = computed(
-  () => simulation.status !== SimulationStatus.Idle && simulation.currentStateId === props.state.id && simulation.status === SimulationStatus.Running,
+  () => simulation.status !== SimulationStatus.Idle && simulation.currentStateIds.includes(props.state.id) && simulation.status === SimulationStatus.Running,
 )
 const isSimAccepted = computed(
-  () => simulation.currentStateId === props.state.id && simulation.status === SimulationStatus.Accepted,
+  () => simulation.currentStateIds.includes(props.state.id) && simulation.status === SimulationStatus.Accepted,
 )
 const isSimRejected = computed(
-  () => simulation.currentStateId === props.state.id && simulation.status === SimulationStatus.Rejected,
+  () => simulation.currentStateIds.includes(props.state.id) && simulation.status === SimulationStatus.Rejected,
 )
 const isSimStuck = computed(
-  () => simulation.currentStateId === props.state.id && simulation.status === SimulationStatus.Stuck,
+  () => simulation.currentStateIds.includes(props.state.id) && simulation.status === SimulationStatus.Stuck,
 )
 
 const labelFontSize = computed(() => {

@@ -6,6 +6,21 @@
       @pointerdown="onPointerDown"
     />
     <aside class="side-panel" :style="{ width: panelWidth + 'px' }">
+      <div class="type-toggle-section">
+        <span class="field-label">Type</span>
+        <div class="tuple-type-toggle">
+          <button
+            class="btn btn-sm"
+            :class="automaton.type === AutomatonType.DFA ? 'btn-primary' : 'btn-ghost'"
+            @click="setType(AutomatonType.DFA)"
+          >DFA</button>
+          <button
+            class="btn btn-sm"
+            :class="automaton.type === AutomatonType.NFA ? 'btn-primary' : 'btn-ghost'"
+            @click="setType(AutomatonType.NFA)"
+          >NFA</button>
+        </div>
+      </div>
       <StateEditor v-if="selection.selectedStateId" />
       <TupleBuilder v-else />
       <SimulationPanel />
@@ -16,8 +31,19 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useSelectionStore } from '~/stores/selection'
+import { useAutomatonStore } from '~/stores/automaton'
+import { useSimulationStore } from '~/stores/simulation'
+import { AutomatonType } from '~/types/automaton'
 
 const selection = useSelectionStore()
+const automaton = useAutomatonStore()
+const simulation = useSimulationStore()
+
+function setType(type: AutomatonType) {
+  if (automaton.type === type) return
+  automaton.setType(type)
+  simulation.reset()
+}
 
 const panelWidth = ref(320)
 const MIN_WIDTH = 200
