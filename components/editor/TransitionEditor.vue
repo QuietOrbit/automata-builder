@@ -4,12 +4,7 @@
     v-if="fixedTarget"
     class="transition-row"
   >
-    <TargetSelect
-      :model-value="fixedTarget"
-      :options="availableTargets"
-      narrow
-      disabled
-    />
+    <span class="target-label mono">{{ fixedTargetName }}</span>
 
     <input
       class="input input-mono symbols-input"
@@ -124,6 +119,11 @@ const displaySymbols = computed(() =>
 );
 
 // --- DFA fixed-target row ---
+
+const fixedTargetName = computed(() => {
+  if (!props.fixedTarget) return "";
+  return automaton.getState(props.fixedTarget)?.name ?? props.fixedTarget;
+});
 
 const localSymbols = ref(displaySymbols.value);
 const inputFocused = ref(false);
