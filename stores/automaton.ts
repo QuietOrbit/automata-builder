@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia'
-import type {
-  Automaton,
-  AutomatonExport,
-  AutomatonState,
+import {
   AutomatonType,
-  Position,
-  Transition,
+  type Automaton,
+  type AutomatonExport,
+  type AutomatonState,
+  type Position,
+  type Transition,
 } from '~/types/automaton'
 
 /**
@@ -133,7 +133,7 @@ export const useAutomatonStore = defineStore('automaton', {
   state: (): Automaton => ({
     id: createId(),
     name: 'Untitled DFA',
-    type: 'DFA',
+    type: AutomatonType.DFA,
     alphabet: [],
     states: [],
     transitions: [],
@@ -238,6 +238,12 @@ export const useAutomatonStore = defineStore('automaton', {
       this.transitions = this.transitions.filter(t => t.id !== id)
     },
 
+    /** Delete multiple transitions by ID in a single pass. */
+    removeTransitions(ids: string[]) {
+      const idSet = new Set(ids)
+      this.transitions = this.transitions.filter(t => !idSet.has(t.id))
+    },
+
     /** Change the symbol on an existing transition. */
     updateTransitionSymbol(id: string, symbol: string) {
       const transition = this.transitions.find(t => t.id === id)
@@ -288,7 +294,7 @@ export const useAutomatonStore = defineStore('automaton', {
     clear() {
       this.id = createId()
       this.name = 'Untitled DFA'
-      this.type = 'DFA'
+      this.type = AutomatonType.DFA
       this.alphabet = []
       this.states = []
       this.transitions = []

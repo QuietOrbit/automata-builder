@@ -31,7 +31,10 @@ export interface Transition {
 }
 
 /** Discriminator for the type of automaton. */
-export type AutomatonType = 'DFA' | 'NFA'
+export enum AutomatonType {
+  DFA = 'DFA',
+  NFA = 'NFA',
+}
 
 /** Complete automaton definition including all states, transitions, and metadata. */
 export interface Automaton {

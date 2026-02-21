@@ -35,22 +35,34 @@
 
     <!-- Transitions -->
     <div class="field">
-      <div class="transitions-header">
-        <span class="field-label">Transitions</span>
-        <button class="btn btn-primary btn-sm" @click="addTransition">+ Add</button>
-      </div>
-
-      <div v-if="transitions.length === 0" class="transitions-empty">
-        No transitions from this state.
-      </div>
+      <span class="field-label">Transitions</span>
 
       <div class="transitions-list">
-        <TransitionEditor
-          v-for="t in transitions"
-          :key="t.id"
-          :transition="t"
-          @remove="automaton.removeTransition(t.id)"
-        />
+        <!-- DFA mode: one fixed row per state -->
+        <template v-if="isDFA">
+          <TransitionEditor
+            v-for="row in dfaRows"
+            :key="row.targetId"
+            :source-id="state.id"
+            :transitions="row.transitions"
+            :fixed-target="row.targetId"
+          />
+        </template>
+
+        <!-- NFA mode: grouped rows + new row -->
+        <template v-else>
+          <TransitionEditor
+            v-for="group in transitionGroups"
+            :key="group.targetId"
+            :source-id="state.id"
+            :transitions="group.transitions"
+          />
+          <TransitionEditor
+            :key="'new-' + transitionGroups.length"
+            :source-id="state.id"
+            :transitions="[]"
+          />
+        </template>
       </div>
     </div>
 
@@ -66,6 +78,7 @@
 <script setup lang="ts">
 import { useAutomatonStore } from '~/stores/automaton'
 import { useSelectionStore } from '~/stores/selection'
+import { AutomatonType } from '~/types/automaton'
 
 const automaton = useAutomatonStore()
 const selection = useSelectionStore()
@@ -78,6 +91,34 @@ const state = computed(() => {
 const transitions = computed(() => {
   if (!selection.selectedStateId) return []
   return automaton.getTransitionsFrom(selection.selectedStateId)
+})
+
+const isDFA = computed(() => automaton.type === AutomatonType.DFA)
+
+// DFA mode: one row per state in the automaton
+const dfaRows = computed(() => {
+  if (!selection.selectedStateId) return []
+  return automaton.states.map(targetState => ({
+    targetId: targetState.id,
+    transitions: transitions.value.filter(t => t.targetId === targetState.id),
+  }))
+})
+
+// NFA mode: group existing transitions by target
+const transitionGroups = computed(() => {
+  const groupMap = new Map<string, typeof transitions.value>()
+  for (const t of transitions.value) {
+    const existing = groupMap.get(t.targetId)
+    if (existing) {
+      existing.push(t)
+    } else {
+      groupMap.set(t.targetId, [t])
+    }
+  }
+  return Array.from(groupMap.entries()).map(([targetId, transitions]) => ({
+    targetId,
+    transitions,
+  }))
 })
 
 function onNameInput(event: Event) {
@@ -94,14 +135,6 @@ function toggleStart() {
 function toggleAccept() {
   if (!state.value || !selection.selectedStateId) return
   automaton.updateState(selection.selectedStateId, { isAccept: !state.value.isAccept })
-}
-
-function addTransition() {
-  if (!selection.selectedStateId) return
-  const sourceId = selection.selectedStateId
-  // Default target: self, or first other state
-  const targetId = automaton.states[0]?.id ?? sourceId
-  automaton.addTransition(sourceId, targetId, '')
 }
 
 function deleteState() {

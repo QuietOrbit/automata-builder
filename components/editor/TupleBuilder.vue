@@ -19,13 +19,13 @@
       <div class="tuple-type-toggle">
         <button
           class="btn btn-sm"
-          :class="type === 'DFA' ? 'btn-primary' : 'btn-ghost'"
-          @click="type = 'DFA'"
+          :class="type === AutomatonType.DFA ? 'btn-primary' : 'btn-ghost'"
+          @click="type = AutomatonType.DFA"
         >DFA</button>
         <button
           class="btn btn-sm"
-          :class="type === 'NFA' ? 'btn-primary' : 'btn-ghost'"
-          @click="type = 'NFA'"
+          :class="type === AutomatonType.NFA ? 'btn-primary' : 'btn-ghost'"
+          @click="type = AutomatonType.NFA"
         >NFA</button>
       </div>
     </div>
@@ -89,7 +89,7 @@
               <td v-for="col in tableColumns" :key="col" class="tuple-table-cell">
                 <!-- DFA: single select -->
                 <select
-                  v-if="type === 'DFA'"
+                  v-if="type === AutomatonType.DFA"
                   class="tuple-cell-select"
                   :value="getTransitionTarget(state, col)"
                   @change="setDFATransition(state, col, ($event.target as HTMLSelectElement).value)"
@@ -143,14 +143,14 @@
 import { useAutomatonStore } from '~/stores/automaton'
 import { useSelectionStore } from '~/stores/selection'
 import { useSimulationStore } from '~/stores/simulation'
-import type { AutomatonType } from '~/types/automaton'
+import { AutomatonType } from '~/types/automaton'
 
 const automaton = useAutomatonStore()
 const selection = useSelectionStore()
 const simulation = useSimulationStore()
 
 const nameInput = ref('')
-const type = ref<AutomatonType>('DFA')
+const type = ref<AutomatonType>(AutomatonType.DFA)
 const statesInput = ref('')
 const alphabetInput = ref('')
 const startState = ref('')
@@ -231,7 +231,7 @@ const parsedAlphabet = computed(() => {
 /** Columns for the transition table: alphabet symbols, plus ε for NFA mode. */
 const tableColumns = computed(() => {
   const cols = [...parsedAlphabet.value]
-  if (type.value === 'NFA') cols.push('ε')
+  if (type.value === AutomatonType.NFA) cols.push('ε')
   return cols
 })
 
