@@ -43,30 +43,13 @@
 
     <!-- q₀ (Start State) -->
     <div class="field">
-      <label
-        class="field-label"
-        for="tuple-start"
-      >q&#8320; (Start State)</label>
-      <select
-        id="tuple-start"
-        class="select"
-        :value="currentStartName"
-        @change="onStartChange"
-      >
-        <option
-          value=""
-          disabled
-        >
-          Select start state
-        </option>
-        <option
-          v-for="s in automaton.states"
-          :key="s.id"
-          :value="s.name"
-        >
-          {{ s.name }}
-        </option>
-      </select>
+      <span class="field-label">q&#8320; (Start State)</span>
+      <TargetSelect
+        :model-value="currentStartId"
+        :options="automaton.states"
+        placeholder="Select start state"
+        @update:model-value="onStartChange"
+      />
     </div>
 
     <!-- F (Accept States) -->
@@ -121,23 +104,15 @@
                 class="tuple-table-cell"
               >
                 <!-- DFA: single select -->
-                <select
+                <TargetSelect
                   v-if="automaton.type === AutomatonType.DFA"
-                  class="tuple-cell-select"
-                  :value="getDFATarget(state.id, col)"
-                  @change="setDFATransition(state.id, col, ($event.target as HTMLSelectElement).value)"
-                >
-                  <option value="">
-                    -
-                  </option>
-                  <option
-                    v-for="t in automaton.states"
-                    :key="t.id"
-                    :value="t.id"
-                  >
-                    {{ t.name }}
-                  </option>
-                </select>
+                  :model-value="getDFATarget(state.id, col)"
+                  :options="automaton.states"
+                  placeholder="-"
+                  compact
+                  allow-clear
+                  @update:model-value="(val: string) => setDFATransition(state.id, col, val)"
+                />
                 <!-- NFA: multi-select dropdown -->
                 <div
                   v-else
@@ -166,18 +141,33 @@
       class="tuple-dropdown"
       :style="{ top: dropdown.y + 'px', left: dropdown.x + 'px' }"
     >
-      <label
+      <div
         v-for="s in automaton.states"
         :key="s.id"
         class="tuple-dropdown-item"
+        :class="{ 'is-checked': hasNFATarget(dropdown.sourceId, dropdown.symbol, s.id) }"
+        @pointerenter="hoverStore.setHoveredState(s.id)"
+        @pointerleave="hoverStore.clearHoveredState()"
+        @click="toggleNFATarget(dropdown.sourceId, dropdown.symbol, s.id)"
       >
-        <input
-          type="checkbox"
-          :checked="hasNFATarget(dropdown.sourceId, dropdown.symbol, s.id)"
-          @change="toggleNFATarget(dropdown.sourceId, dropdown.symbol, s.id)"
+        <svg
+          class="tuple-dropdown-check"
+          width="14"
+          height="14"
+          viewBox="0 0 14 14"
+          fill="none"
         >
+          <path
+            v-if="hasNFATarget(dropdown.sourceId, dropdown.symbol, s.id)"
+            d="M3 7l3 3 5-5"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
         <span class="mono">{{ s.name }}</span>
-      </label>
+      </div>
     </div>
 
     <!-- Re-layout button -->
@@ -192,6 +182,7 @@
 
 <script setup lang="ts">
 import { useAutomatonStore } from "~/stores/automaton";
+import { useHoverStore } from "~/stores/hover";
 import { useSimulationStore } from "~/stores/simulation";
 import { useViewportStore } from "~/stores/viewport";
 import { AutomatonType, EPSILON } from "~/types/automaton";
@@ -200,6 +191,7 @@ import type { LayoutTransition } from "~/utils/layout";
 import { buildVisualInfosFromStore, resolveCollisions } from "~/utils/collision";
 
 const automaton = useAutomatonStore();
+const hoverStore = useHoverStore();
 const simulation = useSimulationStore();
 const viewport = useViewportStore();
 
@@ -276,15 +268,13 @@ function syncStatesFromInput() {
 
 // --- Start state ---
 
-const currentStartName = computed(() => {
-  return automaton.startState?.name ?? "";
+const currentStartId = computed(() => {
+  return automaton.startState?.id ?? "";
 });
 
-function onStartChange(event: Event) {
-  const name = (event.target as HTMLSelectElement).value;
-  const state = automaton.states.find(s => s.name === name);
-  if (state) {
-    automaton.setStartState(state.id);
+function onStartChange(id: string) {
+  if (id) {
+    automaton.setStartState(id);
   }
 }
 
@@ -379,6 +369,7 @@ function openDropdown(sourceId: string, symbol: string, event: MouseEvent) {
 
 function closeDropdown() {
   dropdown.value.open = false;
+  hoverStore.clearHoveredState();
 }
 
 // --- Re-layout ---
