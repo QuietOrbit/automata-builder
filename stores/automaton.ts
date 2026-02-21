@@ -2,7 +2,6 @@ import { defineStore } from 'pinia'
 import {
   AutomatonType,
   EPSILON,
-  type Automaton,
   type AutomatonExport,
   type AutomatonState,
   type AutomatonStoreState,
@@ -36,6 +35,8 @@ export interface TupleData {
 import { createId } from '~/utils/ids'
 import { computeLayout } from '~/utils/layout'
 import type { LayoutTransition } from '~/utils/layout'
+import { buildVisualInfosFromTuple, resolveCollisions } from '~/utils/collision'
+import { useViewportStore } from '~/stores/viewport'
 
 /**
  * Convert the tuple's nested transition map into flat index-based edges
@@ -149,7 +150,7 @@ export const useAutomatonStore = defineStore('automaton', {
           symbols.add(t.symbol)
         }
       }
-      return [...symbols].sort()
+      return [...symbols].sort((a, b) => a.localeCompare(b))
     },
 
     /** The designated start state, or `undefined` if no states exist. */
@@ -286,14 +287,6 @@ export const useAutomatonStore = defineStore('automaton', {
       this.transitions = this.transitions.filter(t => !idSet.has(t.id))
     },
 
-    /** Change the symbol on an existing transition. */
-    updateTransitionSymbol(id: string, symbol: string) {
-      const transition = this.transitions.find(t => t.id === id)
-      if (transition) {
-        transition.symbol = symbol
-      }
-    },
-
     /** Redirect an existing transition to a different target state. */
     updateTransitionTarget(id: string, targetId: string) {
       const transition = this.transitions.find(t => t.id === id)
@@ -314,9 +307,10 @@ export const useAutomatonStore = defineStore('automaton', {
     /**
      * Replace the entire automaton from a 5-tuple definition.
      *
-     * Computes an auto-layout for state positions, generates unique IDs for
-     * every entity, and applies the result in a single `$patch` so Vue
-     * renders only the final state.
+     * Computes an auto-layout for state positions, resolves visual collisions
+     * (self-loop labels, start arrows, etc.), generates unique IDs for every
+     * entity, and applies the result in a single `$patch` so Vue renders only
+     * the final state. Signals a fit-to-content request afterward.
      */
     buildFromTuple(data: TupleData) {
       const nameToIndex = new Map<string, number>()
@@ -328,6 +322,12 @@ export const useAutomatonStore = defineStore('automaton', {
       const startIndex = nameToIndex.get(data.startState) ?? 0
       const positions = computeLayout(data.states.length, startIndex, layoutTransitions)
 
+      // Resolve visual overlaps before building final state objects
+      const visualInfos = buildVisualInfosFromTuple(
+        data.states, data.startState, data.transitions, positions,
+      )
+      resolveCollisions(positions, visualInfos)
+
       const { states, nameToId } = buildStates(data, positions)
       const transitions = buildTransitions(data.transitions, nameToId)
 
@@ -338,6 +338,8 @@ export const useAutomatonStore = defineStore('automaton', {
         states,
         transitions,
       })
+
+      useViewportStore().requestFitToContent()
     },
 
     /** Reset the automaton to its empty initial state. */

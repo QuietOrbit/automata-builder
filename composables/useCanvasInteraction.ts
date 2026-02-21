@@ -1,5 +1,7 @@
 import { reactive, computed, type Ref } from 'vue'
 import type { Position } from '~/types/automaton'
+import type { StateVisualInfo } from '~/utils/collision'
+import { computeStateBounds } from '~/utils/collision'
 
 /** Minimum zoom level (fully zoomed out). */
 const MIN_ZOOM = 0.2
@@ -105,6 +107,51 @@ export function useCanvasInteraction(svgRef: Ref<SVGSVGElement | null>) {
     isPanning.value = false
   }
 
+  /**
+   * Pan and zoom so that all states (with their visual extras) fit inside
+   * the viewport with some padding.
+   *
+   * @param visualInfos - Visual info for every state in the automaton.
+   * @param padding     - World-unit margin around the content bounding box.
+   */
+  function fitToContent(visualInfos: StateVisualInfo[], padding = 50) {
+    const svgEl = svgRef.value
+    if (!svgEl || visualInfos.length === 0) return
+
+    // Compute union AABB of all states
+    let unionMinX = Infinity
+    let unionMinY = Infinity
+    let unionMaxX = -Infinity
+    let unionMaxY = -Infinity
+    for (const info of visualInfos) {
+      const bounds = computeStateBounds(info)
+      if (bounds.minX < unionMinX) unionMinX = bounds.minX
+      if (bounds.minY < unionMinY) unionMinY = bounds.minY
+      if (bounds.maxX > unionMaxX) unionMaxX = bounds.maxX
+      if (bounds.maxY > unionMaxY) unionMaxY = bounds.maxY
+    }
+
+    // Add padding
+    unionMinX -= padding
+    unionMinY -= padding
+    unionMaxX += padding
+    unionMaxY += padding
+
+    const contentWidth = unionMaxX - unionMinX
+    const contentHeight = unionMaxY - unionMinY
+    if (contentWidth <= 0 || contentHeight <= 0) return
+
+    const rect = svgEl.getBoundingClientRect()
+    const optimalZoom = Math.min(rect.width / contentWidth, rect.height / contentHeight)
+    zoom.value = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, optimalZoom))
+
+    // Center the content AABB in the viewport
+    const centerX = (unionMinX + unionMaxX) / 2
+    const centerY = (unionMinY + unionMaxY) / 2
+    pan.x = centerX - (rect.width / zoom.value) / 2
+    pan.y = centerY - (rect.height / zoom.value) / 2
+  }
+
   return {
     pan,
     zoom,
@@ -115,5 +162,6 @@ export function useCanvasInteraction(svgRef: Ref<SVGSVGElement | null>) {
     onPanStart,
     onPanMove,
     onPanEnd,
+    fitToContent,
   }
 }

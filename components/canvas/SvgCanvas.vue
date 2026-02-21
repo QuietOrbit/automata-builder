@@ -100,11 +100,14 @@
 <script setup lang="ts">
 import { useAutomatonStore } from '~/stores/automaton'
 import { useSelectionStore } from '~/stores/selection'
+import { useViewportStore } from '~/stores/viewport'
 import { useCanvasInteraction } from '~/composables/useCanvasInteraction'
 import { useDragState } from '~/composables/useDragState'
+import { buildVisualInfosFromStore } from '~/utils/collision'
 
 const automaton = useAutomatonStore()
 const selection = useSelectionStore()
+const viewport = useViewportStore()
 
 // Group transitions by (sourceId, targetId) for combined arrow rendering
 const transitionGroups = computed(() => {
@@ -120,9 +123,16 @@ const transitionGroups = computed(() => {
 })
 
 const svgRef = ref<SVGSVGElement | null>(null)
-const { viewBox, screenToWorld, onWheel, onPanStart, onPanMove, onPanEnd } =
+const { viewBox, screenToWorld, onWheel, onPanStart, onPanMove, onPanEnd, fitToContent } =
   useCanvasInteraction(svgRef)
 const { isDragging, onDragStart, onDragMove, onDragEnd } = useDragState(screenToWorld)
+
+// Fit-to-content when signaled by the viewport store (e.g. after build/relayout)
+watch(() => viewport.fitRequestId, () => {
+  if (automaton.states.length === 0) return
+  const visualInfos = buildVisualInfosFromStore(automaton.states, automaton.transitions)
+  nextTick(() => fitToContent(visualInfos))
+})
 
 // Track if we moved during a pointer down (to distinguish click from drag)
 const didMove = ref(false)

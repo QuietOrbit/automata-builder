@@ -27,7 +27,7 @@
 
     <!-- Σ (Alphabet) — read-only, derived from transitions -->
     <div class="field">
-      <label class="field-label">&Sigma; (Alphabet)</label>
+      <span class="field-label">&Sigma; (Alphabet)</span>
       <div class="input input-mono tuple-readonly">
         {{ automaton.alphabet.length > 0 ? automaton.alphabet.join(', ') : '(empty)' }}
       </div>
@@ -119,15 +119,16 @@
 
 <script setup lang="ts">
 import { useAutomatonStore } from '~/stores/automaton'
-import { useSelectionStore } from '~/stores/selection'
 import { useSimulationStore } from '~/stores/simulation'
+import { useViewportStore } from '~/stores/viewport'
 import { AutomatonType, EPSILON } from '~/types/automaton'
 import { computeLayout } from '~/utils/layout'
 import type { LayoutTransition } from '~/utils/layout'
+import { buildVisualInfosFromStore, resolveCollisions } from '~/utils/collision'
 
 const automaton = useAutomatonStore()
-const selection = useSelectionStore()
 const simulation = useSimulationStore()
+const viewport = useViewportStore()
 
 // --- Name sync ---
 
@@ -308,27 +309,34 @@ function closeDropdown() {
 
 // --- Re-layout ---
 
+/** Recompute state positions from graph topology, resolve visual overlaps, and fit to view. */
 function relayout() {
   if (automaton.states.length === 0) return
 
-  const nameToIndex = new Map<string, number>()
+  const idToIndex = new Map<string, number>()
   for (let i = 0; i < automaton.states.length; i++) {
-    nameToIndex.set(automaton.states[i].id, i)
+    idToIndex.set(automaton.states[i].id, i)
   }
 
   const layoutTransitions: LayoutTransition[] = automaton.transitions
     .map(t => ({
-      sourceIndex: nameToIndex.get(t.sourceId)!,
-      targetIndex: nameToIndex.get(t.targetId)!,
+      sourceIndex: idToIndex.get(t.sourceId)!,
+      targetIndex: idToIndex.get(t.targetId)!,
     }))
     .filter(lt => lt.sourceIndex !== undefined && lt.targetIndex !== undefined)
 
-  const startIndex = nameToIndex.get(automaton.startState?.id ?? automaton.states[0].id) ?? 0
+  const startIndex = idToIndex.get(automaton.startState?.id ?? automaton.states[0].id) ?? 0
   const positions = computeLayout(automaton.states.length, startIndex, layoutTransitions)
+
+  // Resolve visual overlaps before applying positions
+  const visualInfos = buildVisualInfosFromStore(automaton.states, automaton.transitions)
+  resolveCollisions(positions, visualInfos)
 
   for (let i = 0; i < automaton.states.length; i++) {
     automaton.updateState(automaton.states[i].id, { position: positions[i] })
   }
+
+  viewport.requestFitToContent()
 }
 
 // --- Simulation reset on structural changes ---
