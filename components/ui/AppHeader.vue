@@ -134,9 +134,9 @@ async function onImport(event: Event) {
   try {
     const text = await file.text()
     const data = JSON.parse(text) as AutomatonExport
-    automaton.importJSON(data)
     selection.clearSelection()
     simulation.setInput('')
+    automaton.importJSON(data)
   } catch (e) {
     console.error('Failed to import automaton:', e)
   }
@@ -146,8 +146,8 @@ async function onImport(event: Event) {
 }
 
 function onClear() {
-  automaton.clear()
   selection.clearSelection()
   simulation.setInput('')
+  automaton.clear()
 }
 </script>
