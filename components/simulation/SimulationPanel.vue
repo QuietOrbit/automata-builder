@@ -33,7 +33,9 @@
           current: i === sim.currentIndex && sim.status === SimulationStatus.Running,
           consumed: i < sim.currentIndex,
           remaining: i > sim.currentIndex || sim.status !== SimulationStatus.Running,
+          clickable: sim.status !== SimulationStatus.Idle || sim.canStep,
         }"
+        @click="onCharClick(i)"
       >
         {{ ch }}
       </span>
@@ -105,23 +107,6 @@
       <span class="status-dot" />
       <span class="status-text">{{ statusText }}</span>
     </div>
-
-    <!-- Current state info -->
-    <div
-      v-if="currentStateDisplay"
-      class="info-row"
-    >
-      <span class="info-label">{{ sim.currentStateIds.length > 1 ? 'Current States:' : 'Current State:' }}</span>
-      <span class="info-value mono">{{ currentStateDisplay }}</span>
-    </div>
-
-    <div
-      v-if="sim.status !== SimulationStatus.Idle"
-      class="info-row"
-    >
-      <span class="info-label">Position:</span>
-      <span class="info-value mono">{{ sim.currentIndex }} / {{ sim.input.length }}</span>
-    </div>
   </div>
 </template>
 
@@ -144,15 +129,21 @@ const currentStateDisplay = computed(() => {
 });
 
 const statusText = computed(() => {
+  const stateLabel = currentStateDisplay.value ?? "";
+
   switch (sim.status) {
-    case SimulationStatus.Running:
-      return "Running";
+    case SimulationStatus.Running: {
+      const symbol = sim.input[sim.currentIndex] ?? "";
+      return `In ${stateLabel} — reading '${symbol}' (${sim.currentIndex} / ${sim.input.length})`;
+    }
     case SimulationStatus.Accepted:
-      return "Accepted";
+      return `Accepted in ${stateLabel}`;
     case SimulationStatus.Rejected:
-      return "Rejected";
-    case SimulationStatus.Stuck:
-      return "Stuck (no transition)";
+      return `Rejected in ${stateLabel}`;
+    case SimulationStatus.Stuck: {
+      const symbol = sim.input[sim.currentIndex] ?? "";
+      return `Stuck — no transition for '${symbol}' from ${stateLabel}`;
+    }
     default:
       return "";
   }
@@ -177,5 +168,9 @@ function runToEnd() {
 
 function reset() {
   sim.reset();
+}
+
+function onCharClick(index: number) {
+  sim.jumpToPosition(index);
 }
 </script>
