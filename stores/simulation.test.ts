@@ -18,6 +18,17 @@ function setupSimpleDFA() {
   return { automaton, sim, s0, s1 };
 }
 
+/**
+ * Helper: set up an NFA with both stores and return them.
+ * Does not create any states or transitions — caller adds what they need.
+ */
+function setupNFA() {
+  const automaton = useAutomatonStore();
+  const sim = useSimulationStore();
+  automaton.setType(AutomatonType.NFA);
+  return { automaton, sim };
+}
+
 describe("stores/simulation", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
@@ -149,9 +160,7 @@ describe("stores/simulation", () => {
 
   describe("NFA simulation", () => {
     it("tracks multiple current states", () => {
-      const automaton = useAutomatonStore();
-      const sim = useSimulationStore();
-      automaton.setType(AutomatonType.NFA);
+      const { automaton, sim } = setupNFA();
       const s0 = automaton.addState({ x: 0, y: 0 });
       const s1 = automaton.addState({ x: 100, y: 0 });
       const s2 = automaton.addState({ x: 200, y: 0 });
@@ -168,9 +177,7 @@ describe("stores/simulation", () => {
     });
 
     it("applies epsilon closure at initialization", () => {
-      const automaton = useAutomatonStore();
-      const sim = useSimulationStore();
-      automaton.setType(AutomatonType.NFA);
+      const { automaton, sim } = setupNFA();
       const s0 = automaton.addState({ x: 0, y: 0 });
       const s1 = automaton.addState({ x: 100, y: 0 });
       automaton.addTransition(s0.id, s1.id, EPSILON);
@@ -182,9 +189,7 @@ describe("stores/simulation", () => {
     });
 
     it("applies epsilon closure after each step", () => {
-      const automaton = useAutomatonStore();
-      const sim = useSimulationStore();
-      automaton.setType(AutomatonType.NFA);
+      const { automaton, sim } = setupNFA();
       const s0 = automaton.addState({ x: 0, y: 0 });
       const s1 = automaton.addState({ x: 100, y: 0 });
       const s2 = automaton.addState({ x: 200, y: 0 });
@@ -201,9 +206,7 @@ describe("stores/simulation", () => {
     });
 
     it("accepts if any branch reaches an accept state", () => {
-      const automaton = useAutomatonStore();
-      const sim = useSimulationStore();
-      automaton.setType(AutomatonType.NFA);
+      const { automaton, sim } = setupNFA();
       const s0 = automaton.addState({ x: 0, y: 0 });
       const s1 = automaton.addState({ x: 100, y: 0 });
       const s2 = automaton.addState({ x: 200, y: 0 });
@@ -218,9 +221,7 @@ describe("stores/simulation", () => {
     });
 
     it("gets stuck when no branch has a matching transition", () => {
-      const automaton = useAutomatonStore();
-      const sim = useSimulationStore();
-      automaton.setType(AutomatonType.NFA);
+      const { automaton, sim } = setupNFA();
       automaton.addState({ x: 0, y: 0 });
       automaton.addState({ x: 100, y: 0 }); // s1, unreachable
 
@@ -279,6 +280,79 @@ describe("stores/simulation", () => {
       sim.setInput("b");
       sim.runToEnd();
       expect(sim.status).toBe(SimulationStatus.Stuck);
+    });
+  });
+
+  describe("jumpToPosition", () => {
+    it("jumps forward to a target position", () => {
+      const { sim, automaton, s0, s1 } = setupSimpleDFA();
+      // Extend: q0 --a--> q1 --b--> q0
+      automaton.addTransition(s1.id, s0.id, "b");
+      sim.setInput("ab");
+      sim.jumpToPosition(1);
+      expect(sim.currentIndex).toBe(1);
+      expect(sim.currentStateIds).toEqual([s1.id]);
+      expect(sim.status).toBe(SimulationStatus.Running);
+    });
+
+    it("jumps backward by replaying from start", () => {
+      const { sim, automaton, s0, s1 } = setupSimpleDFA();
+      automaton.addTransition(s1.id, s0.id, "b");
+      sim.setInput("ab");
+      sim.jumpToPosition(2); // go to end
+      expect(sim.currentIndex).toBe(2);
+      sim.jumpToPosition(0); // jump back to start
+      expect(sim.currentIndex).toBe(0);
+      expect(sim.currentStateIds).toEqual([s0.id]);
+      expect(sim.status).toBe(SimulationStatus.Running);
+    });
+
+    it("is a no-op when already at target position", () => {
+      const { sim, s0 } = setupSimpleDFA();
+      sim.setInput("a");
+      sim.jumpToPosition(0); // initializes from idle
+      expect(sim.currentStateIds).toEqual([s0.id]);
+      sim.jumpToPosition(0); // should be no-op
+      expect(sim.currentIndex).toBe(0);
+      expect(sim.currentStateIds).toEqual([s0.id]);
+    });
+
+    it("ignores out-of-bounds target index", () => {
+      const { sim } = setupSimpleDFA();
+      sim.setInput("a");
+      sim.jumpToPosition(-1);
+      expect(sim.status).toBe(SimulationStatus.Idle);
+      sim.jumpToPosition(5);
+      expect(sim.status).toBe(SimulationStatus.Idle);
+    });
+
+    it("stops at stuck position when target is beyond", () => {
+      const { sim } = setupSimpleDFA();
+      sim.setInput("ba"); // 'b' has no transition from q0
+      sim.jumpToPosition(1);
+      expect(sim.status).toBe(SimulationStatus.Stuck);
+      expect(sim.currentIndex).toBe(0); // stuck before reaching target
+    });
+
+    it("builds correct history during replay", () => {
+      const { sim, automaton, s1 } = setupSimpleDFA();
+      automaton.addTransition(s1.id, s1.id, "a");
+      sim.setInput("aaa");
+      sim.jumpToPosition(2);
+      expect(sim.history).toHaveLength(2);
+      expect(sim.history[0].symbolRead).toBe("a");
+      expect(sim.history[1].symbolRead).toBe("a");
+    });
+
+    it("works from a finished state", () => {
+      const { sim, s0 } = setupSimpleDFA();
+      sim.setInput("a");
+      sim.runToEnd();
+      expect(sim.status).toBe(SimulationStatus.Accepted);
+      sim.jumpToPosition(0); // should reset and replay to position 0
+      expect(sim.currentIndex).toBe(0);
+      expect(sim.currentStateIds).toEqual([s0.id]);
+      expect(sim.status).toBe(SimulationStatus.Running);
     });
   });
 
