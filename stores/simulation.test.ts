@@ -221,7 +221,7 @@ describe("stores/simulation", () => {
       const automaton = useAutomatonStore();
       const sim = useSimulationStore();
       automaton.setType(AutomatonType.NFA);
-      const s0 = automaton.addState({ x: 0, y: 0 });
+      automaton.addState({ x: 0, y: 0 });
       automaton.addState({ x: 100, y: 0 }); // s1, unreachable
 
       sim.setInput("a");

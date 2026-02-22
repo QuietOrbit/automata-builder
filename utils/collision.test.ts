@@ -7,7 +7,7 @@ import {
   resolveCollisions,
 } from "./collision";
 import type { AABB, StateVisualInfo } from "./collision";
-import { STATE_RADIUS, SELF_LOOP_RADIUS, START_ARROW_LENGTH } from "./geometry";
+import { STATE_RADIUS, START_ARROW_LENGTH } from "./geometry";
 
 describe("utils/collision", () => {
   describe("computeStateBounds", () => {
