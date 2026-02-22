@@ -188,7 +188,7 @@ import { useViewportStore } from "~/stores/viewport";
 import { AutomatonType, EPSILON } from "~/types/automaton";
 import { computeLayout } from "~/utils/layout";
 import type { LayoutTransition } from "~/utils/layout";
-import { buildVisualInfosFromStore, resolveCollisions } from "~/utils/collision";
+import { buildVisualInfosFromStore, estimateNameLabelWidth, resolveCollisions } from "~/utils/collision";
 
 const automaton = useAutomatonStore();
 const hoverStore = useHoverStore();
@@ -391,11 +391,14 @@ function relayout() {
     .filter(lt => lt.sourceIndex !== undefined && lt.targetIndex !== undefined);
 
   const startIndex = idToIndex.get(automaton.startState?.id ?? automaton.states[0].id) ?? 0;
-  const positions = computeLayout(automaton.states.length, startIndex, layoutTransitions);
+  const maxWidth = Math.max(...automaton.states.map(s => estimateNameLabelWidth(s.name.length)));
+  const hSpacing = Math.max(150, maxWidth + 50);
+  const vSpacing = Math.max(120, maxWidth / 2 + 60);
+  const positions = computeLayout(automaton.states.length, startIndex, layoutTransitions, { hSpacing, vSpacing });
 
   // Resolve visual overlaps before applying positions
   const visualInfos = buildVisualInfosFromStore(automaton.states, automaton.transitions);
-  resolveCollisions(positions, visualInfos);
+  resolveCollisions(positions, visualInfos, 30);
 
   for (let i = 0; i < automaton.states.length; i++) {
     automaton.updateState(automaton.states[i].id, { position: positions[i] });

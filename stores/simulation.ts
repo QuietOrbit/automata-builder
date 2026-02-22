@@ -1,31 +1,87 @@
 import { defineStore } from "pinia";
 import type { SimulationHistoryEntry, SimulationState, Transition } from "~/types/automaton";
-import { AutomatonType, EPSILON, SimulationStatus } from "~/types/automaton";
+import { AutomatonType, SimulationStatus } from "~/types/automaton";
 import { useAutomatonStore } from "~/stores/automaton";
+import { epsilonClosure } from "~/utils/epsilon";
 
 /**
- * Compute the epsilon-closure of a set of state IDs.
- * Follows all ε-transitions reachable from the given states via BFS.
+ * Determine the final simulation status after all input has been consumed.
  *
- * @param stateIds    - Starting state IDs.
- * @param transitions - All transitions in the automaton.
- * @returns Array of all state IDs reachable via zero or more ε-transitions.
+ * @param stateIds    - Current state IDs.
+ * @param getState    - Lookup function for state data.
+ * @returns Accepted if any current state is accepting, Rejected otherwise.
  */
-function epsilonClosure(stateIds: string[], transitions: Transition[]): string[] {
-  const closure = new Set(stateIds);
-  const queue = [...stateIds];
+function resolveEndStatus(
+  stateIds: string[],
+  getState: (id: string) => { isAccept: boolean } | undefined,
+): SimulationStatus {
+  const anyAccept = stateIds.some(id => getState(id)?.isAccept);
+  return anyAccept ? SimulationStatus.Accepted : SimulationStatus.Rejected;
+}
 
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-    for (const t of transitions) {
-      if (t.sourceId === current && t.symbol === EPSILON && !closure.has(t.targetId)) {
-        closure.add(t.targetId);
-        queue.push(t.targetId);
+/**
+ * Advance a DFA simulation by one symbol.
+ *
+ * @param currentId   - The single current state ID.
+ * @param symbol      - The input symbol to read.
+ * @param transitions - Transitions from the current state.
+ * @returns The history entry and next state ID, or null if stuck.
+ */
+function advanceDfa(
+  currentId: string,
+  symbol: string,
+  transitions: Transition[],
+): { entry: SimulationHistoryEntry; nextStateId: string | null } {
+  const match = transitions.find(t => t.symbol === symbol);
+
+  const entry: SimulationHistoryEntry = {
+    stateIds: [currentId],
+    symbolRead: symbol,
+    transitionIds: match ? [match.id] : [],
+  };
+
+  return { entry, nextStateId: match ? match.targetId : null };
+}
+
+/**
+ * Advance an NFA simulation by one symbol.
+ *
+ * @param currentStateIds   - Set of current state IDs.
+ * @param symbol            - The input symbol to read.
+ * @param getTransitionsFrom - Function to get transitions from a state.
+ * @param allTransitions    - All transitions (needed for epsilon closure).
+ * @returns The history entry and next state IDs (empty if stuck).
+ */
+function advanceNfa(
+  currentStateIds: string[],
+  symbol: string,
+  getTransitionsFrom: (id: string) => Transition[],
+  allTransitions: Transition[],
+): { entry: SimulationHistoryEntry; nextStateIds: string[] } {
+  const prevIds = [...currentStateIds];
+  const matchedTransitionIds: string[] = [];
+  const nextStates = new Set<string>();
+
+  for (const stateId of currentStateIds) {
+    for (const t of getTransitionsFrom(stateId)) {
+      if (t.symbol === symbol) {
+        nextStates.add(t.targetId);
+        matchedTransitionIds.push(t.id);
       }
     }
   }
 
-  return [...closure];
+  const entry: SimulationHistoryEntry = {
+    stateIds: prevIds,
+    symbolRead: symbol,
+    transitionIds: matchedTransitionIds,
+  };
+
+  const nextStateIds = nextStates.size > 0
+    ? epsilonClosure([...nextStates], allTransitions)
+    : [];
+
+  return { entry, nextStateIds };
 }
 
 /**
@@ -97,102 +153,104 @@ export const useSimulationStore = defineStore("simulation", {
     },
 
     /**
+     * Initialize the simulation from idle state, placing the simulation
+     * at the start state. For NFAs, applies epsilon closure.
+     *
+     * @returns true if initialization succeeded, false if no start state exists.
+     */
+    initializeFromIdle(): boolean {
+      const automaton = useAutomatonStore();
+      const start = automaton.startState;
+      if (!start) return false;
+
+      this.currentIndex = 0;
+      this.history = [];
+
+      this.currentStateIds = automaton.type === AutomatonType.NFA
+        ? epsilonClosure([start.id], automaton.transitions)
+        : [start.id];
+
+      this.status = this.input.length === 0
+        ? resolveEndStatus(this.currentStateIds, automaton.getState)
+        : SimulationStatus.Running;
+
+      return true;
+    },
+
+    /**
      * Advance the simulation by one symbol. If idle, initializes at the start
      * state first. Handles both DFA and NFA modes.
      */
     step() {
-      const automaton = useAutomatonStore();
-
-      // If idle, initialize simulation at the start state
       if (this.status === SimulationStatus.Idle) {
-        const start = automaton.startState;
-        if (!start) return;
-        this.currentIndex = 0;
-        this.history = [];
-
-        if (automaton.type === AutomatonType.NFA) {
-          this.currentStateIds = epsilonClosure([start.id], automaton.transitions);
-        }
-        else {
-          this.currentStateIds = [start.id];
-        }
-
-        if (this.input.length === 0) {
-          const anyAccept = this.currentStateIds.some(id => automaton.getState(id)?.isAccept);
-          this.status = anyAccept ? SimulationStatus.Accepted : SimulationStatus.Rejected;
-        }
-        else {
-          this.status = SimulationStatus.Running;
-        }
+        this.initializeFromIdle();
         return;
       }
 
       if (this.status !== SimulationStatus.Running || this.currentStateIds.length === 0) return;
 
+      const automaton = useAutomatonStore();
       const symbol = this.input[this.currentIndex];
 
       if (automaton.type === AutomatonType.DFA) {
-        // DFA: single current state
-        const currentId = this.currentStateIds[0];
-        const transitions = automaton.getTransitionsFrom(currentId);
-        const match = transitions.find(t => t.symbol === symbol);
-
-        const entry: SimulationHistoryEntry = {
-          stateIds: [currentId],
-          symbolRead: symbol,
-          transitionIds: match ? [match.id] : [],
-        };
-        this.history.push(entry);
-
-        if (!match) {
-          this.status = SimulationStatus.Stuck;
-          return;
-        }
-
-        this.currentStateIds = [match.targetId];
-        this.currentIndex++;
-
-        if (this.currentIndex >= this.input.length) {
-          const currentState = automaton.getState(match.targetId);
-          this.status = currentState?.isAccept ? SimulationStatus.Accepted : SimulationStatus.Rejected;
-        }
+        this.stepDfa(symbol);
       }
       else {
-        // NFA: multiple current states
-        const prevIds = [...this.currentStateIds];
-        const matchedTransitionIds: string[] = [];
-        const nextStates = new Set<string>();
+        this.stepNfa(symbol);
+      }
+    },
 
-        for (const stateId of this.currentStateIds) {
-          for (const t of automaton.getTransitionsFrom(stateId)) {
-            if (t.symbol === symbol) {
-              nextStates.add(t.targetId);
-              matchedTransitionIds.push(t.id);
-            }
-          }
-        }
+    /**
+     * Process one DFA simulation step for the given input symbol.
+     *
+     * @param symbol - The input symbol to read.
+     */
+    stepDfa(symbol: string) {
+      const automaton = useAutomatonStore();
+      const currentId = this.currentStateIds[0];
+      const { entry, nextStateId } = advanceDfa(
+        currentId, symbol, automaton.getTransitionsFrom(currentId),
+      );
 
-        const entry: SimulationHistoryEntry = {
-          stateIds: prevIds,
-          symbolRead: symbol,
-          transitionIds: matchedTransitionIds,
-        };
-        this.history.push(entry);
+      this.history.push(entry);
 
-        if (nextStates.size === 0) {
-          this.currentStateIds = [];
-          this.status = SimulationStatus.Stuck;
-          return;
-        }
+      if (!nextStateId) {
+        this.status = SimulationStatus.Stuck;
+        return;
+      }
 
-        // Apply epsilon closure to the new state set
-        this.currentStateIds = epsilonClosure([...nextStates], automaton.transitions);
-        this.currentIndex++;
+      this.currentStateIds = [nextStateId];
+      this.currentIndex++;
 
-        if (this.currentIndex >= this.input.length) {
-          const anyAccept = this.currentStateIds.some(id => automaton.getState(id)?.isAccept);
-          this.status = anyAccept ? SimulationStatus.Accepted : SimulationStatus.Rejected;
-        }
+      if (this.currentIndex >= this.input.length) {
+        this.status = resolveEndStatus(this.currentStateIds, automaton.getState);
+      }
+    },
+
+    /**
+     * Process one NFA simulation step for the given input symbol.
+     *
+     * @param symbol - The input symbol to read.
+     */
+    stepNfa(symbol: string) {
+      const automaton = useAutomatonStore();
+      const { entry, nextStateIds } = advanceNfa(
+        this.currentStateIds, symbol, automaton.getTransitionsFrom, automaton.transitions,
+      );
+
+      this.history.push(entry);
+
+      if (nextStateIds.length === 0) {
+        this.currentStateIds = [];
+        this.status = SimulationStatus.Stuck;
+        return;
+      }
+
+      this.currentStateIds = nextStateIds;
+      this.currentIndex++;
+
+      if (this.currentIndex >= this.input.length) {
+        this.status = resolveEndStatus(this.currentStateIds, automaton.getState);
       }
     },
 

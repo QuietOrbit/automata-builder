@@ -4,6 +4,7 @@ import {
   buildVisualInfosFromStore,
   buildVisualInfosFromTuple,
   computeStateBounds,
+  estimateNameLabelWidth,
   resolveCollisions,
 } from "./collision";
 import type { AABB, StateVisualInfo } from "./collision";
@@ -19,6 +20,7 @@ describe("utils/collision", () => {
         hasSelfLoop: false,
         isStart: false,
         selfLoopLabelWidth: 0,
+        nameLabelWidth: 0,
       };
       const bounds = computeStateBounds(info);
       const r = STATE_RADIUS + CIRCLE_PADDING;
@@ -35,6 +37,7 @@ describe("utils/collision", () => {
         hasSelfLoop: false,
         isStart: false,
         selfLoopLabelWidth: 0,
+        nameLabelWidth: 0,
       };
       const start: StateVisualInfo = { ...plain, isStart: true };
 
@@ -51,6 +54,7 @@ describe("utils/collision", () => {
         hasSelfLoop: false,
         isStart: false,
         selfLoopLabelWidth: 0,
+        nameLabelWidth: 0,
       };
       const looped: StateVisualInfo = {
         ...plain,
@@ -70,6 +74,7 @@ describe("utils/collision", () => {
         hasSelfLoop: true,
         isStart: false,
         selfLoopLabelWidth: 1,
+        nameLabelWidth: 0,
       };
       const wide: StateVisualInfo = { ...narrow, selfLoopLabelWidth: 20 };
 
@@ -79,6 +84,27 @@ describe("utils/collision", () => {
       expect(wideBounds.maxX - wideBounds.minX).toBeGreaterThan(
         narrowBounds.maxX - narrowBounds.minX,
       );
+    });
+
+    it("extends horizontally for wide state name labels", () => {
+      const short: StateVisualInfo = {
+        position: { x: 100, y: 100 },
+        hasSelfLoop: false,
+        isStart: false,
+        selfLoopLabelWidth: 0,
+        nameLabelWidth: 20,
+      };
+      const wide: StateVisualInfo = { ...short, nameLabelWidth: 120 };
+
+      const shortBounds = computeStateBounds(short);
+      const wideBounds = computeStateBounds(wide);
+
+      expect(wideBounds.maxX - wideBounds.minX).toBeGreaterThan(
+        shortBounds.maxX - shortBounds.minX,
+      );
+      // Wide label should extend 60px each side from center
+      expect(wideBounds.minX).toBe(100 - 60);
+      expect(wideBounds.maxX).toBe(100 + 60);
     });
   });
 
@@ -114,6 +140,7 @@ describe("utils/collision", () => {
         hasSelfLoop: false,
         isStart: false,
         selfLoopLabelWidth: 0,
+        nameLabelWidth: 0,
       }));
 
       resolveCollisions(positions, infos);
@@ -132,6 +159,7 @@ describe("utils/collision", () => {
         hasSelfLoop: false,
         isStart: false,
         selfLoopLabelWidth: 0,
+        nameLabelWidth: 0,
       }));
 
       resolveCollisions(positions, infos);
@@ -152,6 +180,7 @@ describe("utils/collision", () => {
         hasSelfLoop: false,
         isStart: false,
         selfLoopLabelWidth: 0,
+        nameLabelWidth: 0,
       }));
 
       // Should not throw, even if not fully resolved
@@ -224,6 +253,36 @@ describe("utils/collision", () => {
 
       expect(infos[0].hasSelfLoop).toBe(false);
       expect(infos[1].hasSelfLoop).toBe(false);
+    });
+
+    it("includes nameLabelWidth based on name length", () => {
+      const names = ["q0", "{q0,q1,q2}"];
+      const positions = [{ x: 0, y: 0 }, { x: 200, y: 0 }];
+      const transitions = {};
+
+      const infos = buildVisualInfosFromTuple(names, "q0", transitions, positions);
+
+      // Short name: 2 chars × 10px/char = 20px
+      expect(infos[0].nameLabelWidth).toBe(20);
+      // Long name: 10 chars × 7px/char = 70px
+      expect(infos[1].nameLabelWidth).toBe(70);
+    });
+  });
+
+  describe("estimateNameLabelWidth", () => {
+    it("uses wider char width for short names", () => {
+      // 2 chars × 10px = 20
+      expect(estimateNameLabelWidth(2)).toBe(20);
+    });
+
+    it("uses medium char width for medium names", () => {
+      // 4 chars × 8px = 32
+      expect(estimateNameLabelWidth(4)).toBe(32);
+    });
+
+    it("uses narrower char width for long names", () => {
+      // 10 chars × 7px = 70
+      expect(estimateNameLabelWidth(10)).toBe(70);
     });
   });
 });
