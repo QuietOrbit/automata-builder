@@ -100,7 +100,7 @@
     </div>
 
     <!-- Transitions -->
-    <div class="bubble-field">
+    <div class="bubble-field bubble-field-grow">
       <span class="field-label">Transitions</span>
       <div class="bubble-transitions-list">
         <!-- DFA mode: one fixed row per state -->

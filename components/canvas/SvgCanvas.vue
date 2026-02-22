@@ -162,7 +162,7 @@ const transitionGroups = computed(() => {
 const svgRef = ref<SVGSVGElement | null>(null);
 const { viewBox, screenToWorld, worldToScreen, zoom, onWheel, onPanStart, onPanMove, onPanEnd, fitToContent }
   = useCanvasInteraction(svgRef);
-const { isDragging, onDragStart, onDragMove, onDragEnd } = useDragState(screenToWorld);
+const { isDragging, dragTargetId, hasDragged, onDragStart, onDragMove, onDragEnd } = useDragState(screenToWorld);
 
 /** All states that should have a visible bubble (pinned + active selection, deduplicated). */
 const visibleBubbleStates = computed(() => {
@@ -211,6 +211,9 @@ function onPointerMove(event: PointerEvent) {
 }
 
 function onPointerUp(_event: PointerEvent) {
+  if (dragTargetId.value && !hasDragged.value) {
+    selection.selectState(dragTargetId.value);
+  }
   onDragEnd();
   onPanEnd();
 }
