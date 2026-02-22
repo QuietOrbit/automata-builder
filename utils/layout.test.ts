@@ -125,6 +125,34 @@ describe("utils/layout", () => {
       });
     });
 
+    describe("crossing minimization", () => {
+      it("reorders nodes within layers to reduce crossings", () => {
+        // Graph: 0→1, 0→2, 0→3, 1→5, 3→4
+        // BFS: layer 0=[0], layer 1=[1,2,3], layer 2=[4,5]
+        // Without reorder: edges 1→5 and 3→4 cross (1 at top, 5 at bottom)
+        // After reorder: layer 2 becomes [5,4], no crossing
+        const transitions: LayoutTransition[] = [
+          { sourceIndex: 0, targetIndex: 1 },
+          { sourceIndex: 0, targetIndex: 2 },
+          { sourceIndex: 0, targetIndex: 3 },
+          { sourceIndex: 3, targetIndex: 4 },
+          { sourceIndex: 1, targetIndex: 5 },
+        ];
+        const positions = computeLayout(6, 0, transitions);
+
+        // States 1-3 should be in the same column (layer 1)
+        expect(positions[1].x).toBe(positions[2].x);
+        expect(positions[2].x).toBe(positions[3].x);
+
+        // States 4-5 should be in the same column (layer 2)
+        expect(positions[4].x).toBe(positions[5].x);
+
+        // After crossing minimization, state 5 (connected to state 1 at top)
+        // should be above state 4 (connected to state 3 at bottom)
+        expect(positions[5].y).toBeLessThan(positions[4].y);
+      });
+    });
+
     describe("edge cases", () => {
       it("handles a single state with no transitions", () => {
         const positions = computeLayout(1, 0, []);

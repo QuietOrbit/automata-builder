@@ -10,8 +10,8 @@ import {
 } from "~/types/automaton";
 import { createId } from "~/utils/ids";
 import { computeLayout } from "~/utils/layout";
-import type { LayoutTransition } from "~/utils/layout";
-import { buildVisualInfosFromTuple, resolveCollisions } from "~/utils/collision";
+import type { LayoutTransition, LayoutSpacing } from "~/utils/layout";
+import { buildVisualInfosFromTuple, estimateNameLabelWidth, resolveCollisions } from "~/utils/collision";
 import { useViewportStore } from "~/stores/viewport";
 
 /**
@@ -36,6 +36,22 @@ export interface TupleData {
   acceptStates: string[];
   /** Transition function (δ): `transitions[sourceName][symbol] = targetNames[]`. */
   transitions: Record<string, Record<string, string[]>>;
+}
+
+/**
+ * Compute layout spacing based on the maximum state name width.
+ *
+ * For short names (e.g., `q0`), returns default spacing. For long set-notation
+ * names (e.g., `{q0,q1,q2}`), increases spacing to prevent overlap.
+ *
+ * @param stateNames - Array of state name strings.
+ * @returns Layout spacing overrides.
+ */
+function computeSpacingForNames(stateNames: string[]): LayoutSpacing {
+  const maxWidth = Math.max(...stateNames.map(n => estimateNameLabelWidth(n.length)));
+  const hSpacing = Math.max(150, maxWidth + 50);
+  const vSpacing = Math.max(120, maxWidth / 2 + 60);
+  return { hSpacing, vSpacing };
 }
 
 /**
@@ -320,13 +336,14 @@ export const useAutomatonStore = defineStore("automaton", {
 
       const layoutTransitions = buildLayoutTransitions(data.transitions, nameToIndex);
       const startIndex = nameToIndex.get(data.startState) ?? 0;
-      const positions = computeLayout(data.states.length, startIndex, layoutTransitions);
+      const spacing = computeSpacingForNames(data.states);
+      const positions = computeLayout(data.states.length, startIndex, layoutTransitions, spacing);
 
       // Resolve visual overlaps before building final state objects
       const visualInfos = buildVisualInfosFromTuple(
         data.states, data.startState, data.transitions, positions,
       );
-      resolveCollisions(positions, visualInfos);
+      resolveCollisions(positions, visualInfos, 30);
 
       const { states, nameToId } = buildStates(data, positions);
       const transitions = buildTransitions(data.transitions, nameToId);
