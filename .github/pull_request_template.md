@@ -12,6 +12,7 @@
 
 - [ ] Tested locally with `npm run dev`
 - [ ] Lint passes (`npm run lint`)
+- [ ] Unit tests pass (`npm run test`)
 - [ ] Type-check passes (`npx tsc --noEmit`)
 - [ ] Production build succeeds (`npm run build`)
 - [ ] Tested in both DFA and NFA modes (if applicable)
