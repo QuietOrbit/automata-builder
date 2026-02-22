@@ -3,6 +3,9 @@ import { AutomatonType, EPSILON } from "~/types/automaton";
 import type { TupleData } from "~/stores/automaton";
 import { epsilonClosure } from "~/utils/epsilon";
 
+/** Maximum number of DFA states before aborting subset construction. */
+const MAX_DFA_STATES = 1024;
+
 /**
  * Compute the non-epsilon alphabet from a set of transitions, sorted.
  *
@@ -140,5 +143,179 @@ export function removeEpsilonTransitions(
     startState: startState.name,
     acceptStates: newAcceptStates,
     transitions: newTransitions,
+  };
+}
+
+/**
+ * Convert a set of NFA state IDs to a canonical, sorted set-notation name.
+ * Empty sets produce the dead state name "∅".
+ *
+ * @param ids      - NFA state IDs in this DFA state.
+ * @param idToName - Map from state ID to state name.
+ * @returns A canonical name like "{q0,q1}" or "∅".
+ */
+function toSetName(ids: string[], idToName: Map<string, string>): string {
+  if (ids.length === 0) return "∅";
+  const names = ids.map(id => idToName.get(id)!).sort((a, b) => a.localeCompare(b));
+  return `{${names.join(",")}}`;
+}
+
+/**
+ * Compute the set of NFA state IDs reachable from a DFA state set
+ * on a given symbol, then apply epsilon closure.
+ *
+ * @param currentSet  - NFA state IDs in the current DFA state.
+ * @param symbol      - The input symbol to follow.
+ * @param transitions - All NFA transitions.
+ * @returns Sorted array of NFA state IDs in the target DFA state.
+ */
+function computeDfaTarget(
+  currentSet: string[],
+  symbol: string,
+  transitions: Transition[],
+): string[] {
+  const reached = new Set<string>();
+  for (const stateId of currentSet) {
+    for (const t of transitions) {
+      if (t.sourceId === stateId && t.symbol === symbol) {
+        reached.add(t.targetId);
+      }
+    }
+  }
+
+  return reached.size > 0
+    ? epsilonClosure([...reached], transitions).sort()
+    : [];
+}
+
+/**
+ * Build the DFA transition map for a single DFA state (a set of NFA states).
+ * Returns the symbol map and tracks whether a dead state is needed.
+ *
+ * @param currentSet  - NFA state IDs in this DFA state.
+ * @param alphabet    - Input alphabet symbols.
+ * @param transitions - All NFA transitions.
+ * @param idToName    - Map from NFA state ID to name.
+ * @param visited     - Already-visited DFA states (by canonical name).
+ * @param queue       - BFS queue for unvisited DFA state sets.
+ * @returns The symbol map and whether any transition led to the dead state.
+ */
+function buildDfaSymbolMap(
+  currentSet: string[],
+  alphabet: string[],
+  transitions: Transition[],
+  idToName: Map<string, string>,
+  visited: Map<string, string[]>,
+  queue: string[][],
+): { symbolMap: Record<string, string[]>; hasDeadTransition: boolean } {
+  const symbolMap: Record<string, string[]> = {};
+  let hasDeadTransition = false;
+
+  for (const symbol of alphabet) {
+    const targetSet = computeDfaTarget(currentSet, symbol, transitions);
+    const targetName = toSetName(targetSet, idToName);
+
+    if (targetSet.length === 0) {
+      hasDeadTransition = true;
+      symbolMap[symbol] = ["∅"];
+    }
+    else {
+      symbolMap[symbol] = [targetName];
+      if (!visited.has(targetName)) {
+        visited.set(targetName, targetSet);
+        queue.push(targetSet);
+      }
+    }
+  }
+
+  return { symbolMap, hasDeadTransition };
+}
+
+/**
+ * Create a dead state entry with self-loops on every alphabet symbol.
+ *
+ * @param alphabet - Input alphabet symbols.
+ * @returns Symbol map where every symbol maps to ["∅"].
+ */
+function buildDeadStateTransitions(alphabet: string[]): Record<string, string[]> {
+  const symbolMap: Record<string, string[]> = {};
+  for (const symbol of alphabet) {
+    symbolMap[symbol] = ["∅"];
+  }
+  return symbolMap;
+}
+
+/**
+ * Convert an NFA to an equivalent DFA using the subset construction algorithm.
+ *
+ * Each DFA state represents a set of NFA states. States are named using
+ * sorted set notation (e.g., `{q0,q1}`). A dead state `∅` is created
+ * for any missing transitions. Throws if the DFA exceeds MAX_DFA_STATES.
+ *
+ * @param states      - All NFA states.
+ * @param transitions - All NFA transitions (epsilon transitions handled via closure).
+ * @param alphabet    - The input alphabet (excluding epsilon).
+ * @returns TupleData representing the equivalent DFA.
+ * @throws Error if the number of DFA states exceeds the safety cap.
+ */
+export function subsetConstruction(
+  states: AutomatonState[],
+  transitions: Transition[],
+  alphabet: string[],
+): TupleData {
+  const acceptIds = new Set(states.filter(s => s.isAccept).map(s => s.id));
+  const idToName = new Map(states.map(s => [s.id, s.name]));
+
+  // Start state is the epsilon closure of the NFA start state
+  const startNfa = states.find(s => s.isStart)!;
+  const startSet = epsilonClosure([startNfa.id], transitions).sort();
+  const startName = toSetName(startSet, idToName);
+
+  // BFS through state sets
+  const dfaTransitions: Record<string, Record<string, string[]>> = {};
+  const dfaStates: string[] = [];
+  const dfaAcceptStates: string[] = [];
+
+  const visited = new Map<string, string[]>();
+  const queue: string[][] = [startSet];
+  visited.set(startName, startSet);
+
+  let needsDeadState = false;
+
+  while (queue.length > 0) {
+    if (visited.size > MAX_DFA_STATES) {
+      throw new Error(
+        `Subset construction exceeded ${MAX_DFA_STATES} states. The NFA may be too complex to convert.`,
+      );
+    }
+
+    const currentSet = queue.shift()!;
+    const currentName = toSetName(currentSet, idToName);
+    dfaStates.push(currentName);
+
+    if (currentSet.some(id => acceptIds.has(id))) {
+      dfaAcceptStates.push(currentName);
+    }
+
+    const { symbolMap, hasDeadTransition } = buildDfaSymbolMap(
+      currentSet, alphabet, transitions, idToName, visited, queue,
+    );
+
+    if (hasDeadTransition) needsDeadState = true;
+    dfaTransitions[currentName] = symbolMap;
+  }
+
+  if (needsDeadState) {
+    dfaStates.push("∅");
+    dfaTransitions["∅"] = buildDeadStateTransitions(alphabet);
+  }
+
+  return {
+    type: AutomatonType.DFA,
+    states: dfaStates,
+    alphabet,
+    startState: startName,
+    acceptStates: dfaAcceptStates,
+    transitions: dfaTransitions,
   };
 }
