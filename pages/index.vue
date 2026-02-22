@@ -30,6 +30,7 @@
       </div>
       <TupleBuilder />
       <ConversionPanel />
+      <MinimizationPanel />
       <SimulationPanel />
     </aside>
   </div>

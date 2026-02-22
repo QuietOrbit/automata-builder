@@ -837,6 +837,35 @@ body {
 }
 
 /* ========================================
+   Minimization Panel
+   ======================================== */
+
+.minimization-panel {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-bottom: 1px solid var(--color-panel-border);
+}
+
+.merge-summary {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.merge-summary li {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  padding: 4px 8px;
+  background: color-mix(in srgb, var(--color-button-bg) 8%, var(--color-panel-bg));
+  border-radius: 4px;
+}
+
+/* ========================================
    Simulation Panel
    ======================================== */
 
