@@ -29,6 +29,7 @@
         </div>
       </div>
       <TupleBuilder />
+      <RegexPanel />
       <ConversionPanel />
       <MinimizationPanel />
       <SimulationPanel />
