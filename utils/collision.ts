@@ -27,10 +27,26 @@ export interface StateVisualInfo {
   hasSelfLoop: boolean;
   isStart: boolean;
   selfLoopLabelWidth: number;
+  /** Estimated pixel width of the state name label. */
+  nameLabelWidth: number;
 }
 
 /** Approximate character width (px) for estimating label text extent. */
 const CHAR_WIDTH = 8;
+
+/**
+ * Estimate the pixel width of a state name label.
+ *
+ * Uses the same font-size breakpoints as StateNode.vue's `labelFontSize`
+ * computed property to approximate rendered text width.
+ *
+ * @param nameLength - Number of characters in the state name.
+ * @returns Estimated pixel width of the rendered label text.
+ */
+export function estimateNameLabelWidth(nameLength: number): number {
+  const charWidth = nameLength <= 2 ? 10 : nameLength <= 4 ? 8 : 7;
+  return nameLength * charWidth;
+}
 
 /** Padding around the base circle (accounts for accept ring stroke). */
 const CIRCLE_PADDING = 5;
@@ -41,8 +57,10 @@ const CIRCLE_PADDING = 5;
  */
 export function computeStateBounds(info: StateVisualInfo): AABB {
   const r = STATE_RADIUS + CIRCLE_PADDING;
-  let minX = info.position.x - r;
-  let maxX = info.position.x + r;
+  const nameHalfWidth = info.nameLabelWidth / 2;
+  const halfWidth = Math.max(r, nameHalfWidth);
+  let minX = info.position.x - halfWidth;
+  let maxX = info.position.x + halfWidth;
   let minY = info.position.y - r;
   const maxY = info.position.y + r;
 
@@ -208,6 +226,7 @@ export function buildVisualInfosFromStore(
       hasSelfLoop,
       isStart: s.isStart,
       selfLoopLabelWidth: labelText.length,
+      nameLabelWidth: estimateNameLabelWidth(s.name.length),
     };
   });
 }
@@ -239,6 +258,7 @@ export function buildVisualInfosFromTuple(
       hasSelfLoop,
       isStart: name === startState,
       selfLoopLabelWidth: labelText.length,
+      nameLabelWidth: estimateNameLabelWidth(name.length),
     };
   });
 }
