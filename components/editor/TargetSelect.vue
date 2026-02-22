@@ -140,7 +140,8 @@ function close() {
 
 /* Narrow variant for transition editor rows */
 .target-select-trigger.narrow {
-  flex: 0 0 80px;
+  flex: 0 1 auto;
+  min-width: 60px;
   padding: 4px 6px;
   font-size: 12px;
 }

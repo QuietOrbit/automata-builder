@@ -582,9 +582,11 @@ body {
   flex-direction: column;
   gap: 10px;
   box-shadow: var(--shadow-md);
-  min-width: 220px;
-  max-width: 320px;
+  min-width: 260px;
+  max-width: 600px;
   cursor: default;
+  resize: horizontal;
+  overflow: hidden;
 }
 
 /* Drag header */
@@ -719,13 +721,15 @@ body {
 }
 
 .target-select {
-  flex: 0 0 80px;
+  flex: 0 1 auto;
+  min-width: 60px;
   font-size: 12px;
   padding: 4px 6px;
 }
 
 .target-label {
-  flex: 0 0 80px;
+  flex: 0 1 auto;
+  min-width: 60px;
   font-size: 12px;
   padding: 4px 6px;
   color: var(--color-text-secondary);
