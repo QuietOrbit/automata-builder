@@ -1,7 +1,13 @@
 # Automata Builder
 
 [![CI](https://github.com/QuietOrbit/automata-builder/actions/workflows/ci.yml/badge.svg)](https://github.com/QuietOrbit/automata-builder/actions/workflows/ci.yml)
+[![Deploy](https://github.com/QuietOrbit/automata-builder/actions/workflows/deploy.yml/badge.svg)](https://github.com/QuietOrbit/automata-builder/actions/workflows/deploy.yml)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Nuxt 3](https://img.shields.io/badge/Nuxt-3-00DC82?logo=nuxtdotjs&logoColor=white)](https://nuxt.com/)
+[![GitHub last commit](https://img.shields.io/github/last-commit/QuietOrbit/automata-builder)](https://github.com/QuietOrbit/automata-builder/commits/main)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/5919aa70f26b41078c1db55e5c5470cd)](https://app.codacy.com/gh/QuietOrbit/automata-builder/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
+[![GitHub issues](https://img.shields.io/github/issues/QuietOrbit/automata-builder)](https://github.com/QuietOrbit/automata-builder/issues)
 
 A visual DFA/NFA builder and simulator for Automata Theory. Construct automata on an interactive SVG canvas, define them with a formal 5-tuple, and step through input strings to test acceptance.
 
