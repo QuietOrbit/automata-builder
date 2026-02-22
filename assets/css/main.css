@@ -797,6 +797,15 @@ body {
   border: 1px solid var(--color-input-border);
 }
 
+.input-char.clickable {
+  cursor: pointer;
+}
+
+.input-char.clickable:hover {
+  outline: 2px solid var(--color-button-bg);
+  outline-offset: -1px;
+}
+
 /* Controls */
 .controls {
   display: flex;

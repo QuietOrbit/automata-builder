@@ -210,6 +210,28 @@ export const useSimulationStore = defineStore("simulation", {
     },
 
     /**
+     * Jump the simulation to a specific input position by replaying from
+     * the start state. Uses the same safety counter as runToEnd().
+     * If the simulation gets stuck or finishes before reaching the target,
+     * it stops at that point.
+     *
+     * @param targetIndex - The input position to jump to (0-based).
+     */
+    jumpToPosition(targetIndex: number) {
+      if (targetIndex < 0 || targetIndex > this.input.length) return;
+      if (targetIndex === this.currentIndex && this.status !== SimulationStatus.Idle) return;
+
+      this.reset();
+      this.step(); // Initialize from idle → sets start state
+
+      let safetyCounter = 10000;
+      while (this.currentIndex < targetIndex && this.status === SimulationStatus.Running && safetyCounter > 0) {
+        this.step();
+        safetyCounter--;
+      }
+    },
+
+    /**
      * Repeatedly step forward until the simulation finishes or a safety
      * counter (10,000 iterations) is reached to prevent infinite loops.
      */

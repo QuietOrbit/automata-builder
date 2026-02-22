@@ -3,6 +3,9 @@ import withNuxt from "./.nuxt/eslint.config.mjs";
 
 export default withNuxt(
   {
+    ignores: [".claude/**"],
+  },
+  {
     rules: {
       // Enforce Number.* static methods over global equivalents
       "no-restricted-globals": ["error",
