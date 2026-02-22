@@ -1,0 +1,14 @@
+exclude_paths:
+  - "node_modules/**"
+  - ".nuxt/**"
+  - ".output/**"
+
+engines:
+  eslint:
+    enabled: true
+    exclude_paths: []
+    plugins:
+      - security
+    options:
+      rules:
+        security/detect-object-injection: off
