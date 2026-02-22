@@ -184,7 +184,7 @@ function computeDfaTarget(
   }
 
   return reached.size > 0
-    ? epsilonClosure([...reached], transitions).sort()
+    ? epsilonClosure([...reached], transitions).sort((a, b) => a.localeCompare(b))
     : [];
 }
 
@@ -268,7 +268,7 @@ export function subsetConstruction(
 
   // Start state is the epsilon closure of the NFA start state
   const startNfa = states.find(s => s.isStart)!;
-  const startSet = epsilonClosure([startNfa.id], transitions).sort();
+  const startSet = epsilonClosure([startNfa.id], transitions).sort((a, b) => a.localeCompare(b));
   const startName = toSetName(startSet, idToName);
 
   // BFS through state sets

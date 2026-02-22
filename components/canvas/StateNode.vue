@@ -88,7 +88,6 @@ const labelFontSize = computed(() => {
 
 function onPointerDown(event: PointerEvent) {
   if (event.button !== 0) return;
-  selection.selectState(props.state.id);
   emit("dragstart", props.state.id, event);
 }
 

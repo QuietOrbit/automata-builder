@@ -44,7 +44,9 @@ const CHAR_WIDTH = 8;
  * @returns Estimated pixel width of the rendered label text.
  */
 export function estimateNameLabelWidth(nameLength: number): number {
-  const charWidth = nameLength <= 2 ? 10 : nameLength <= 4 ? 8 : 7;
+  let charWidth = 7;
+  if (nameLength <= 2) charWidth = 10;
+  else if (nameLength <= 4) charWidth = 8;
   return nameLength * charWidth;
 }
 

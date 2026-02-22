@@ -582,9 +582,12 @@ body {
   flex-direction: column;
   gap: 10px;
   box-shadow: var(--shadow-md);
-  min-width: 220px;
-  max-width: 320px;
+  width: 300px;
+  min-width: 260px;
+  max-width: 600px;
   cursor: default;
+  resize: both;
+  overflow: hidden;
 }
 
 /* Drag header */
@@ -659,6 +662,11 @@ body {
   gap: 4px;
 }
 
+.bubble-field-grow {
+  flex: 1;
+  min-height: 0;
+}
+
 .bubble-toggles {
   display: flex;
   gap: 14px;
@@ -668,7 +676,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 180px;
+  flex: 1;
   overflow-y: auto;
 }
 
@@ -719,13 +727,13 @@ body {
 }
 
 .target-select {
-  flex: 0 0 80px;
+  flex: 0 0 100px;
   font-size: 12px;
   padding: 4px 6px;
 }
 
 .target-label {
-  flex: 0 0 80px;
+  flex: 0 0 100px;
   font-size: 12px;
   padding: 4px 6px;
   color: var(--color-text-secondary);
@@ -739,6 +747,69 @@ body {
   font-size: 12px;
   padding: 4px 6px;
   min-width: 60px;
+}
+
+/* Target Select (dropdown trigger) */
+
+.target-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-input-border);
+  border-radius: 6px;
+  background: var(--color-input-bg);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.target-select-trigger.narrow {
+  flex: 0 0 100px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+.target-select-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.target-select-trigger:hover:not(.disabled) {
+  border-color: var(--color-text-secondary);
+}
+
+.target-select-trigger.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.target-select-trigger.compact {
+  flex: unset;
+  width: 100%;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  justify-content: center;
+  padding: 3px 4px;
+}
+
+.target-select-trigger.compact:hover:not(.disabled) {
+  background: var(--color-panel-border);
+  border-color: transparent;
+}
+
+.target-select-chevron {
+  flex-shrink: 0;
+  transition: transform 0.15s;
+  color: var(--color-text-secondary);
+}
+
+.target-select-chevron.open {
+  transform: rotate(180deg);
 }
 
 /* ========================================
