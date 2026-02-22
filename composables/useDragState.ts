@@ -17,8 +17,14 @@ export function useDragState(screenToWorld: (x: number, y: number) => Position) 
   const isDragging = ref(false);
   /** ID of the state being dragged, or null if not dragging. */
   const dragTargetId = ref<string | null>(null);
+  /** Whether the pointer moved enough during this drag to count as a real drag (not a click). */
+  const hasDragged = ref(false);
   /** Offset between the pointer's world position and the state's center at drag start. */
   const dragOffset = reactive({ x: 0, y: 0 });
+  /** Screen position where the drag started, used for click-vs-drag threshold. */
+  const startScreen = reactive({ x: 0, y: 0 });
+  /** Minimum screen-pixel distance before a pointerdown counts as a drag. */
+  const DRAG_THRESHOLD = 4;
 
   /**
    * Begin dragging a state node. Records the offset between the pointer
@@ -32,6 +38,9 @@ export function useDragState(screenToWorld: (x: number, y: number) => Position) 
 
     isDragging.value = true;
     dragTargetId.value = stateId;
+    hasDragged.value = false;
+    startScreen.x = event.clientX;
+    startScreen.y = event.clientY;
 
     const worldPos = screenToWorld(event.clientX, event.clientY);
     dragOffset.x = state.position.x - worldPos.x;
@@ -44,6 +53,13 @@ export function useDragState(screenToWorld: (x: number, y: number) => Position) 
    */
   function onDragMove(event: PointerEvent) {
     if (!isDragging.value || !dragTargetId.value) return;
+
+    if (!hasDragged.value) {
+      const dx = event.clientX - startScreen.x;
+      const dy = event.clientY - startScreen.y;
+      if (dx * dx + dy * dy < DRAG_THRESHOLD * DRAG_THRESHOLD) return;
+      hasDragged.value = true;
+    }
 
     const worldPos = screenToWorld(event.clientX, event.clientY);
     automaton.updateState(dragTargetId.value, {
@@ -63,6 +79,7 @@ export function useDragState(screenToWorld: (x: number, y: number) => Position) 
   return {
     isDragging,
     dragTargetId,
+    hasDragged,
     onDragStart,
     onDragMove,
     onDragEnd,
