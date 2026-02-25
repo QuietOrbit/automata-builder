@@ -55,8 +55,8 @@ export interface Automaton {
   transitions: Transition[];
 }
 
-/** Store state for the automaton — same as Automaton but without alphabet (computed via getter). */
-export type AutomatonStoreState = Omit<Automaton, "alphabet">;
+/** Store state for the automaton — alphabet is stored directly as an editable property. */
+export type AutomatonStoreState = Automaton;
 
 /** Tracks progression through the simulation state machine. */
 export enum SimulationStatus {

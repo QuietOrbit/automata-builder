@@ -205,39 +205,133 @@ describe("stores/automaton", () => {
     });
   });
 
-  describe("getters", () => {
-    describe("alphabet", () => {
-      it("derives alphabet from transition symbols, sorted", () => {
-        const store = useAutomatonStore();
-        const s0 = store.addState({ x: 0, y: 0 });
-        const s1 = store.addState({ x: 100, y: 0 });
-        store.addTransition(s0.id, s1.id, "b");
-        store.addTransition(s1.id, s0.id, "a");
-        expect(store.alphabet).toEqual(["a", "b"]);
-      });
-
-      it("excludes epsilon from alphabet", () => {
-        const store = useAutomatonStore();
-        store.setType(AutomatonType.NFA);
-        const s0 = store.addState({ x: 0, y: 0 });
-        const s1 = store.addState({ x: 100, y: 0 });
-        store.addTransition(s0.id, s1.id, "a");
-        store.addTransition(s0.id, s1.id, EPSILON);
-        expect(store.alphabet).toEqual(["a"]);
-      });
-
-      it("deduplicates symbols", () => {
-        const store = useAutomatonStore();
-        store.setType(AutomatonType.NFA);
-        const s0 = store.addState({ x: 0, y: 0 });
-        const s1 = store.addState({ x: 100, y: 0 });
-        const s2 = store.addState({ x: 200, y: 0 });
-        store.addTransition(s0.id, s1.id, "a");
-        store.addTransition(s0.id, s2.id, "a");
-        expect(store.alphabet).toEqual(["a"]);
-      });
+  describe("alphabet", () => {
+    it("starts with an empty alphabet", () => {
+      const store = useAutomatonStore();
+      expect(store.alphabet).toEqual([]);
     });
 
+    it("setAlphabet replaces the alphabet", () => {
+      const store = useAutomatonStore();
+      store.setAlphabet(["a", "b"]);
+      expect(store.alphabet).toEqual(["a", "b"]);
+    });
+
+    it("setAlphabet trims whitespace and deduplicates", () => {
+      const store = useAutomatonStore();
+      store.setAlphabet([" a ", "b", "a", " b"]);
+      expect(store.alphabet).toEqual(["a", "b"]);
+    });
+
+    it("setAlphabet filters empty strings", () => {
+      const store = useAutomatonStore();
+      store.setAlphabet(["a", "", "b", " "]);
+      expect(store.alphabet).toEqual(["a", "b"]);
+    });
+
+    it("setAlphabet sorts alphabetically", () => {
+      const store = useAutomatonStore();
+      store.setAlphabet(["c", "a", "b"]);
+      expect(store.alphabet).toEqual(["a", "b", "c"]);
+    });
+
+    it("addSymbol appends a new symbol and sorts", () => {
+      const store = useAutomatonStore();
+      store.setAlphabet(["b"]);
+      store.addSymbol("a");
+      expect(store.alphabet).toEqual(["a", "b"]);
+    });
+
+    it("addSymbol ignores duplicates", () => {
+      const store = useAutomatonStore();
+      store.setAlphabet(["a"]);
+      store.addSymbol("a");
+      expect(store.alphabet).toEqual(["a"]);
+    });
+
+    it("removeSymbol removes the symbol", () => {
+      const store = useAutomatonStore();
+      store.setAlphabet(["a", "b"]);
+      store.removeSymbol("b");
+      expect(store.alphabet).toEqual(["a"]);
+    });
+
+    it("removeSymbol deletes transitions using that symbol", () => {
+      const store = useAutomatonStore();
+      store.setAlphabet(["a", "b"]);
+      const s0 = store.addState({ x: 0, y: 0 });
+      const s1 = store.addState({ x: 100, y: 0 });
+      store.addTransition(s0.id, s1.id, "a");
+      store.addTransition(s0.id, s1.id, "b");
+      store.removeSymbol("a");
+      expect(store.alphabet).toEqual(["b"]);
+      expect(store.transitions).toHaveLength(1);
+      expect(store.transitions[0].symbol).toBe("b");
+    });
+
+    it("addTransition auto-adds symbol to alphabet", () => {
+      const store = useAutomatonStore();
+      const s0 = store.addState({ x: 0, y: 0 });
+      const s1 = store.addState({ x: 100, y: 0 });
+      store.addTransition(s0.id, s1.id, "b");
+      store.addTransition(s1.id, s0.id, "a");
+      expect(store.alphabet).toEqual(["a", "b"]);
+    });
+
+    it("addTransition does not add epsilon to alphabet", () => {
+      const store = useAutomatonStore();
+      store.setType(AutomatonType.NFA);
+      const s0 = store.addState({ x: 0, y: 0 });
+      const s1 = store.addState({ x: 100, y: 0 });
+      store.addTransition(s0.id, s1.id, "a");
+      store.addTransition(s0.id, s1.id, EPSILON);
+      expect(store.alphabet).toEqual(["a"]);
+    });
+
+    it("addTransition deduplicates symbols in alphabet", () => {
+      const store = useAutomatonStore();
+      store.setType(AutomatonType.NFA);
+      const s0 = store.addState({ x: 0, y: 0 });
+      const s1 = store.addState({ x: 100, y: 0 });
+      const s2 = store.addState({ x: 200, y: 0 });
+      store.addTransition(s0.id, s1.id, "a");
+      store.addTransition(s0.id, s2.id, "a");
+      expect(store.alphabet).toEqual(["a"]);
+    });
+
+    it("clear resets alphabet to empty", () => {
+      const store = useAutomatonStore();
+      store.setAlphabet(["a", "b"]);
+      store.clear();
+      expect(store.alphabet).toEqual([]);
+    });
+
+    it("buildFromTuple populates alphabet from tuple data", () => {
+      const store = useAutomatonStore();
+      store.buildFromTuple({
+        type: AutomatonType.DFA,
+        states: ["q0", "q1"],
+        alphabet: ["a", "b"],
+        transitions: { q0: { a: ["q1"] } },
+        startState: "q0",
+        acceptStates: ["q1"],
+      });
+      expect(store.alphabet).toEqual(["a", "b"]);
+    });
+
+    it("importJSON restores stored alphabet", () => {
+      const store = useAutomatonStore();
+      store.setAlphabet(["x", "y"]);
+      const s0 = store.addState({ x: 0, y: 0 });
+      store.addTransition(s0.id, s0.id, "x");
+      const exported = store.exportJSON();
+      store.clear();
+      store.importJSON(exported);
+      expect(store.alphabet).toEqual(["x", "y"]);
+    });
+  });
+
+  describe("getters", () => {
     describe("startState", () => {
       it("returns the start state", () => {
         const store = useAutomatonStore();
