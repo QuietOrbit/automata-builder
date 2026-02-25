@@ -3,6 +3,7 @@ import type { RegexNode } from "~/types/regex";
 import { AutomatonType, EPSILON } from "~/types/automaton";
 import type { TupleData } from "~/stores/automaton";
 import { parseRegex } from "./parser";
+import { simplifyNfa } from "./simplify";
 
 /** An NFA fragment with exactly one start and one accept state. */
 interface NfaFragment {
@@ -161,15 +162,29 @@ class ThompsonBuilder {
 }
 
 /**
- * Parse a regex string and build an equivalent NFA-ε via Thompson's construction.
+ * Parse a regex string and build an unsimplified NFA-ε via Thompson's construction.
+ *
+ * This is the raw output before simplification — useful for testing the
+ * simplification pipeline separately.
  *
  * @param input - A Sipser-style regex string (e.g., "(a ∪ b)*abb").
- * @returns TupleData representing the NFA-ε, ready for `buildFromTuple()`.
+ * @returns Raw TupleData with epsilon transitions and structural states.
  * @throws {RegexParseError} If the regex string is syntactically invalid.
  */
-export function regexToNfa(input: string): TupleData {
+export function regexToRawNfa(input: string): TupleData {
   const ast = parseRegex(input);
   const builder = new ThompsonBuilder();
   const fragment = builder.build(ast);
   return builder.toTupleData(fragment);
+}
+
+/**
+ * Parse a regex string and build an equivalent simplified NFA via Thompson's construction.
+ *
+ * @param input - A Sipser-style regex string (e.g., "(a ∪ b)*abb").
+ * @returns Simplified TupleData with no ε-transitions, ready for `buildFromTuple()`.
+ * @throws {RegexParseError} If the regex string is syntactically invalid.
+ */
+export function regexToNfa(input: string): TupleData {
+  return simplifyNfa(regexToRawNfa(input));
 }
