@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { RegexNodeType } from "./regex";
-import type { RegexNode } from "./regex";
+import { RegexNodeType } from "../regex";
+import type { RegexNode } from "../regex";
 
 describe("types/regex", () => {
   it("represents a symbol node", () => {

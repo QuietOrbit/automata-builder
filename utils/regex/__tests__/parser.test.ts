@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseRegex } from "./parser";
+import { parseRegex } from "../parser";
 import { RegexNodeType } from "~/types/regex";
 
 describe("utils/regex/parser", () => {

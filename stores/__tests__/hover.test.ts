@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
-import { useHoverStore } from "./hover";
+import { useHoverStore } from "../hover";
 
 describe("stores/hover", () => {
   beforeEach(() => {

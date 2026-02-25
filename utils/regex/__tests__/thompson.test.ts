@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { regexToNfa } from "./thompson";
+import { regexToNfa } from "../thompson";
 import { AutomatonType, EPSILON } from "~/types/automaton";
 
 describe("utils/regex/thompson", () => {

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { simplifyNfa } from "./simplify";
+import { simplifyNfa } from "../simplify";
 import { AutomatonType, EPSILON } from "~/types/automaton";
 import type { TupleData } from "~/stores/automaton";
-import { regexToRawNfa } from "./thompson";
+import { regexToRawNfa } from "../thompson";
 
 // ---------------------------------------------------------------------------
 // Test helpers

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AutomatonType, EPSILON, SimulationStatus } from "./automaton";
+import { AutomatonType, EPSILON, SimulationStatus } from "../automaton";
 
 describe("types/automaton", () => {
   describe("EPSILON constant", () => {

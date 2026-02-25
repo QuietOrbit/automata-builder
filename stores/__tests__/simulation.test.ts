@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
-import { useSimulationStore } from "./simulation";
-import { useAutomatonStore } from "./automaton";
+import { useSimulationStore } from "../simulation";
+import { useAutomatonStore } from "../automaton";
 import { AutomatonType, EPSILON, SimulationStatus } from "~/types/automaton";
 
 /**

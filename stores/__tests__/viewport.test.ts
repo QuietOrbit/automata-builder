@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
-import { useViewportStore } from "./viewport";
+import { useViewportStore } from "../viewport";
 
 describe("stores/viewport", () => {
   beforeEach(() => {

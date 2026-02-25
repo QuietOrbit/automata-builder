@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tokenize, TokenType } from "./tokenizer";
+import { tokenize, TokenType } from "../tokenizer";
 
 describe("utils/regex/tokenizer", () => {
   it("tokenizes single symbol", () => {
