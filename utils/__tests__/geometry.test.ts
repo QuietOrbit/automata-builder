@@ -18,7 +18,7 @@ import {
   STATE_RADIUS,
   START_ARROW_LENGTH,
   LABEL_OFFSET,
-} from "./geometry";
+} from "../geometry";
 import type { Position } from "~/types/automaton";
 
 /** Helper: assert two positions are close within floating-point tolerance. */

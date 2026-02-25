@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { removeEpsilonTransitions, subsetConstruction } from "./conversion";
+import { removeEpsilonTransitions, subsetConstruction } from "../conversion";
 import type { AutomatonState, Transition } from "~/types/automaton";
 import { AutomatonType, EPSILON } from "~/types/automaton";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { minimizeDfa } from "./minimization";
+import { minimizeDfa } from "../minimization";
 import type { AutomatonState, Transition } from "~/types/automaton";
 import { AutomatonType } from "~/types/automaton";
 

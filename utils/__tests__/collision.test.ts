@@ -6,9 +6,9 @@ import {
   computeStateBounds,
   estimateNameLabelWidth,
   resolveCollisions,
-} from "./collision";
-import type { AABB, StateVisualInfo } from "./collision";
-import { STATE_RADIUS, START_ARROW_LENGTH } from "./geometry";
+} from "../collision";
+import type { AABB, StateVisualInfo } from "../collision";
+import { STATE_RADIUS, START_ARROW_LENGTH } from "../geometry";
 
 describe("utils/collision", () => {
   describe("computeStateBounds", () => {

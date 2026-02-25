@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
-import { useTransitionRouting } from "./useTransitionRouting";
+import { useTransitionRouting } from "../useTransitionRouting";
 import { useAutomatonStore } from "~/stores/automaton";
 
 describe("composables/useTransitionRouting", () => {
