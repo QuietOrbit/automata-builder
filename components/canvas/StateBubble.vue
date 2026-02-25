@@ -314,12 +314,10 @@ function onAlphabetKeydown(e: KeyboardEvent) {
     commitAlphabet();
     return;
   }
-  if (e.key !== ",") return;
-  e.preventDefault();
-  const input = e.target as HTMLInputElement;
-  alphabetInput.value = input.value + ",";
-  input.value = alphabetInput.value;
-  commitAlphabet();
+  if (e.key === ",") {
+    isEditingAlphabet.value = true;
+    commitAlphabet();
+  }
 }
 
 function commitAlphabet() {
