@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { epsilonClosure } from "./epsilon";
+import { epsilonClosure } from "../epsilon";
 import type { Transition } from "~/types/automaton";
 import { EPSILON } from "~/types/automaton";
 

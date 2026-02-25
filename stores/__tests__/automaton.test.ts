@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
-import { useAutomatonStore } from "./automaton";
+import { useAutomatonStore } from "../automaton";
 import { AutomatonType, EPSILON } from "~/types/automaton";
 
 describe("stores/automaton", () => {

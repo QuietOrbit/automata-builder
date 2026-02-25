@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeContentBounds } from "./export";
+import { computeContentBounds } from "../export";
 
 describe("utils/export", () => {
   describe("computeContentBounds", () => {

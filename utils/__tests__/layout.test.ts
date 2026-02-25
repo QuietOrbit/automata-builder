@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { computeLayout } from "./layout";
-import type { LayoutTransition } from "./layout";
+import { computeLayout } from "../layout";
+import type { LayoutTransition } from "../layout";
 
 describe("utils/layout", () => {
   describe("computeLayout", () => {
