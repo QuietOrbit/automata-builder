@@ -153,22 +153,12 @@ export const useAutomatonStore = defineStore("automaton", {
     id: createId(),
     name: "Untitled DFA",
     type: AutomatonType.DFA,
+    alphabet: [],
     states: [],
     transitions: [],
   }),
 
   getters: {
-    /** Derived alphabet from all non-epsilon transition symbols, sorted. */
-    alphabet(): string[] {
-      const symbols = new Set<string>();
-      for (const t of this.transitions) {
-        if (t.symbol && t.symbol !== EPSILON) {
-          symbols.add(t.symbol);
-        }
-      }
-      return [...symbols].sort((a, b) => a.localeCompare(b));
-    },
-
     /** The designated start state, or `undefined` if no states exist. */
     startState(): AutomatonState | undefined {
       return this.states.find(s => s.isStart);
@@ -230,6 +220,26 @@ export const useAutomatonStore = defineStore("automaton", {
   },
 
   actions: {
+    /** Replace the entire alphabet. Trims, deduplicates, filters empties, and sorts. */
+    setAlphabet(symbols: string[]) {
+      this.alphabet = [...new Set(
+        symbols.map(s => s.trim()).filter(s => s.length > 0),
+      )].sort((a, b) => a.localeCompare(b));
+    },
+
+    /** Add a single symbol to the alphabet (no-op if duplicate or empty). */
+    addSymbol(symbol: string) {
+      const trimmed = symbol.trim();
+      if (!trimmed || this.alphabet.includes(trimmed)) return;
+      this.alphabet = [...this.alphabet, trimmed].sort((a, b) => a.localeCompare(b));
+    },
+
+    /** Remove a symbol from the alphabet and delete all transitions that use it. */
+    removeSymbol(symbol: string) {
+      this.alphabet = this.alphabet.filter(s => s !== symbol);
+      this.transitions = this.transitions.filter(t => t.symbol !== symbol);
+    },
+
     /** Add a new state at the given canvas position. The first state added is automatically marked as start. */
     addState(position: Position): AutomatonState {
       const isFirst = this.states.length === 0;
@@ -272,6 +282,11 @@ export const useAutomatonStore = defineStore("automaton", {
      * replaces its target instead of creating a duplicate.
      */
     addTransition(sourceId: string, targetId: string, symbol: string): Transition {
+      // Auto-add non-epsilon symbols to the alphabet
+      if (symbol && symbol !== EPSILON && !this.alphabet.includes(symbol)) {
+        this.alphabet = [...this.alphabet, symbol].sort((a, b) => a.localeCompare(b));
+      }
+
       if (this.type === AutomatonType.DFA) {
         const existing = this.transitions.find(
           t => t.sourceId === sourceId && t.symbol === symbol,
@@ -352,6 +367,7 @@ export const useAutomatonStore = defineStore("automaton", {
         id: createId(),
         name: data.name || `Untitled ${data.type}`,
         type: data.type,
+        alphabet: [...data.alphabet].sort((a, b) => a.localeCompare(b)),
         states,
         transitions,
       });
@@ -363,6 +379,7 @@ export const useAutomatonStore = defineStore("automaton", {
     clear() {
       this.id = createId();
       this.name = `Untitled ${this.type}`;
+      this.alphabet = [];
       this.states = [];
       this.transitions = [];
     },
@@ -389,6 +406,7 @@ export const useAutomatonStore = defineStore("automaton", {
       this.id = a.id;
       this.name = a.name;
       this.type = a.type;
+      this.alphabet = a.alphabet ?? [];
       this.states = a.states;
       this.transitions = a.transitions;
     },
