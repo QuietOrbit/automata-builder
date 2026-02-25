@@ -33,12 +33,17 @@
       >
     </div>
 
-    <!-- Σ (Alphabet) — read-only, derived from transitions -->
+    <!-- Σ (Alphabet) -->
     <div class="field">
       <span class="field-label">&Sigma; (Alphabet)</span>
-      <div class="input input-mono tuple-readonly">
-        {{ automaton.alphabet.length > 0 ? automaton.alphabet.join(', ') : '(empty)' }}
-      </div>
+      <input
+        id="tuple-alphabet"
+        v-model="alphabetInput"
+        class="input input-mono"
+        placeholder="a, b, c"
+        @blur="syncAlphabetFromInput"
+        @keydown="onAlphabetKeydown"
+      >
     </div>
 
     <!-- q₀ (Start State) -->
@@ -264,6 +269,54 @@ function syncStatesFromInput() {
 
   // Update the input to reflect actual store state
   statesInput.value = automaton.states.map(s => s.name).join(", ");
+}
+
+// --- Alphabet sync ---
+
+const alphabetInput = ref(automaton.alphabet.join(", "));
+
+watch(
+  () => automaton.alphabet.join(", "),
+  (val) => {
+    if (document.activeElement?.id !== "tuple-alphabet") {
+      alphabetInput.value = val;
+    }
+  },
+);
+
+function syncAlphabetFromInput() {
+  const newSymbols = alphabetInput.value
+    .split(",")
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+
+  const removedSymbols = automaton.alphabet.filter(s => !newSymbols.includes(s));
+  const affectedTransitions = automaton.transitions.filter(
+    t => removedSymbols.includes(t.symbol),
+  );
+
+  if (affectedTransitions.length > 0) {
+    const count = affectedTransitions.length;
+    const syms = removedSymbols.join(", ");
+    if (!confirm(`Remove symbol(s) '${syms}'? This will delete ${count} transition(s).`)) {
+      alphabetInput.value = automaton.alphabet.join(", ");
+      return;
+    }
+  }
+
+  automaton.setAlphabet(newSymbols);
+  alphabetInput.value = automaton.alphabet.join(", ");
+}
+
+function onAlphabetKeydown(e: KeyboardEvent) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    syncAlphabetFromInput();
+    return;
+  }
+  if (e.key === ",") {
+    syncAlphabetFromInput();
+  }
 }
 
 // --- Start state ---
