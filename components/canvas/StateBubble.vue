@@ -99,51 +99,49 @@
       </div>
     </div>
 
-    <!-- Transitions -->
-    <div class="bubble-field bubble-field-grow">
-      <span class="field-label">Transitions</span>
-      <div class="bubble-transitions-list">
-        <!-- DFA mode: one fixed row per state -->
-        <template v-if="isDFA">
-          <TransitionEditor
-            v-for="row in dfaRows"
-            :key="row.targetId"
-            :source-id="state.id"
-            :transitions="row.transitions"
-            :fixed-target="row.targetId"
-          />
-        </template>
-
-        <!-- NFA mode: grouped rows + new row -->
-        <template v-else>
-          <TransitionEditor
-            v-for="group in transitionGroups"
-            :key="group.targetId"
-            :source-id="state.id"
-            :transitions="group.transitions"
-          />
-          <TransitionEditor
-            :key="'new-' + transitionGroups.length"
-            :source-id="state.id"
-            :transitions="[]"
-          />
-        </template>
-      </div>
+    <!-- Alphabet -->
+    <div class="bubble-field">
+      <label
+        class="field-label"
+        :for="'bubble-alphabet-input-' + state.id"
+      >Alphabet (Σ)</label>
+      <input
+        :id="'bubble-alphabet-input-' + state.id"
+        class="input input-mono"
+        :value="alphabetDisplay"
+        placeholder="a, b, c"
+        @input="onAlphabetInput"
+        @blur="commitAlphabet"
+        @keydown="onAlphabetKeydown"
+      >
     </div>
 
-    <!-- Delete -->
-    <button
-      class="btn btn-danger btn-full"
-      @click="deleteState"
-    >
-      Delete State
-    </button>
+    <!-- Transition grid -->
+    <div class="bubble-field bubble-field-grow">
+      <span class="field-label">Transitions</span>
+      <TransitionGrid :source-id="state.id" />
+    </div>
+
+    <!-- Footer -->
+    <div class="bubble-footer">
+      <button
+        class="btn btn-ghost btn-sm"
+        @click="clearTransitions"
+      >
+        Clear Transitions
+      </button>
+      <button
+        class="btn btn-danger btn-sm"
+        @click="deleteState"
+      >
+        Delete State
+      </button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import type { AutomatonState, Position } from "~/types/automaton";
-import { AutomatonType } from "~/types/automaton";
 import { STATE_RADIUS } from "~/utils/geometry";
 import { useAutomatonStore } from "~/stores/automaton";
 import { useSelectionStore } from "~/stores/selection";
@@ -292,34 +290,71 @@ function closeBubble() {
   }
 }
 
-// --- Transitions logic ---
+// --- Alphabet editing ---
 
-const transitions = computed(() => automaton.getTransitionsFrom(props.state.id));
-const isDFA = computed(() => automaton.type === AutomatonType.DFA);
+const alphabetDisplay = computed(() => automaton.alphabet.join(", "));
+const alphabetInput = ref(automaton.alphabet.join(", "));
+const isEditingAlphabet = ref(false);
 
-const dfaRows = computed(() =>
-  automaton.states.map(targetState => ({
-    targetId: targetState.id,
-    transitions: transitions.value.filter(t => t.targetId === targetState.id),
-  })),
-);
+watch(alphabetDisplay, (val) => {
+  if (!isEditingAlphabet.value) {
+    alphabetInput.value = val;
+  }
+});
 
-const transitionGroups = computed(() => {
-  const groupMap = new Map<string, typeof transitions.value>();
-  for (const t of transitions.value) {
-    const existing = groupMap.get(t.targetId);
-    if (existing) {
-      existing.push(t);
-    }
-    else {
-      groupMap.set(t.targetId, [t]);
+function onAlphabetInput(e: Event) {
+  alphabetInput.value = (e.target as HTMLInputElement).value;
+  isEditingAlphabet.value = true;
+}
+
+function onAlphabetKeydown(e: KeyboardEvent) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    isEditingAlphabet.value = true;
+    commitAlphabet();
+    return;
+  }
+  if (e.key !== ",") return;
+  e.preventDefault();
+  const input = e.target as HTMLInputElement;
+  alphabetInput.value = input.value + ",";
+  input.value = alphabetInput.value;
+  commitAlphabet();
+}
+
+function commitAlphabet() {
+  if (!isEditingAlphabet.value) return;
+  isEditingAlphabet.value = false;
+
+  const newSymbols = alphabetInput.value
+    .split(",")
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+
+  const removedSymbols = automaton.alphabet.filter(s => !newSymbols.includes(s));
+  const affectedTransitions = automaton.transitions.filter(
+    t => removedSymbols.includes(t.symbol),
+  );
+
+  if (affectedTransitions.length > 0) {
+    const count = affectedTransitions.length;
+    const syms = removedSymbols.join(", ");
+    if (!confirm(`Remove symbol(s) '${syms}'? This will delete ${count} transition(s).`)) {
+      alphabetInput.value = automaton.alphabet.join(", ");
+      return;
     }
   }
-  return Array.from(groupMap.entries()).map(([targetId, trans]) => ({
-    targetId,
-    transitions: trans,
-  }));
-});
+
+  automaton.setAlphabet(newSymbols);
+  alphabetInput.value = automaton.alphabet.join(", ");
+}
+
+// --- Transition actions ---
+
+function clearTransitions() {
+  const fromThis = automaton.getTransitionsFrom(props.state.id);
+  automaton.removeTransitions(fromThis.map(t => t.id));
+}
 
 // --- Edit handlers ---
 
