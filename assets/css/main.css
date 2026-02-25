@@ -826,9 +826,88 @@ body {
   border-color: var(--color-button-bg);
 }
 
-.regex-char-buttons {
+.regex-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.regex-input-wrapper .regex-input {
+  padding-right: 28px;
+}
+
+.regex-clear-btn {
+  position: absolute;
+  right: 4px;
+  font-size: 14px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.regex-clear-btn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-panel-border);
+}
+
+.regex-button-grid {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.regex-button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.regex-group-label {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.regex-group-buttons {
   display: flex;
   gap: 4px;
+}
+
+.regex-calc-btn {
+  min-width: 32px;
+  height: 32px;
+  font-size: 14px;
+  font-family: var(--font-mono), monospace;
+  background: var(--color-panel-bg);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-panel-border);
+  border-radius: 4px;
+}
+
+.regex-calc-btn:hover:not(:disabled) {
+  background: var(--color-panel-border);
+  color: var(--color-text-primary);
+}
+
+.regex-button-separator {
+  width: 1px;
+  height: 32px;
+  background: var(--color-panel-border);
+  flex-shrink: 0;
+}
+
+.regex-alphabet-group {
+  margin-top: 4px;
+}
+
+.regex-alphabet-buttons {
+  flex-wrap: wrap;
+}
+
+.regex-add-letter-btn {
+  border-style: dashed;
+  color: var(--color-text-secondary);
 }
 
 /* ========================================
@@ -1213,7 +1292,6 @@ body {
   color: var(--color-text-secondary);
   font-size: 11px;
   font-weight: 600;
-  text-transform: uppercase;
   letter-spacing: 1px;
   position: sticky;
   top: 0;
@@ -1221,6 +1299,7 @@ body {
 
 .tuple-table-corner {
   width: 50px;
+  text-transform: uppercase;
 }
 
 .tuple-table-row-header {
