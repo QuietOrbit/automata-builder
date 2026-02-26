@@ -130,6 +130,16 @@
       :is-dragging="isDragging"
       :zoom="zoom"
     />
+
+    <CanvasToolbar
+      :zoom="zoom"
+      :is-fullscreen="viewport.isFullscreen"
+      @zoom-in="zoomIn"
+      @zoom-out="zoomOut"
+      @reset-zoom="resetZoom"
+      @fit-to-content="onFitToContent"
+      @toggle-fullscreen="viewport.toggleFullscreen()"
+    />
   </div>
 </template>
 
@@ -160,7 +170,7 @@ const transitionGroups = computed(() => {
 });
 
 const svgRef = ref<SVGSVGElement | null>(null);
-const { viewBox, screenToWorld, worldToScreen, zoom, onWheel, onPanStart, onPanMove, onPanEnd, fitToContent }
+const { viewBox, screenToWorld, worldToScreen, zoom, onWheel, onPanStart, onPanMove, onPanEnd, fitToContent, zoomIn, zoomOut, resetZoom }
   = useCanvasInteraction(svgRef);
 const { isDragging, dragTargetId, hasDragged, onDragStart, onDragMove, onDragEnd } = useDragState(screenToWorld);
 
@@ -227,15 +237,41 @@ function onStateDragStart(stateId: string, event: PointerEvent) {
   onDragStart(stateId, event);
 }
 
+/** Fit the viewport to show all states with padding. */
+function onFitToContent() {
+  if (automaton.states.length === 0) return;
+  const visualInfos = buildVisualInfosFromStore(automaton.states, automaton.transitions);
+  fitToContent(visualInfos);
+}
+
 onMounted(() => document.addEventListener("keydown", onKeyDown));
 onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
 
 function onKeyDown(event: KeyboardEvent) {
   const tag = (event.target as HTMLElement)?.tagName;
+  const mod = event.metaKey || event.ctrlKey;
 
   if (event.key === "Escape") {
+    if (viewport.isFullscreen) {
+      viewport.exitFullscreen();
+      return;
+    }
     selection.closeAll();
     (event.target as HTMLElement)?.blur();
+    return;
+  }
+
+  // Ctrl/Cmd+0 — reset zoom (works even with input focused)
+  if (mod && event.key === "0") {
+    event.preventDefault();
+    resetZoom();
+    return;
+  }
+
+  // Ctrl/Cmd+Shift+F — toggle fullscreen
+  if (mod && event.shiftKey && event.key.toLowerCase() === "f") {
+    event.preventDefault();
+    viewport.toggleFullscreen();
     return;
   }
 

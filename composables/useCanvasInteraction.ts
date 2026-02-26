@@ -4,11 +4,13 @@ import type { StateVisualInfo } from "~/utils/collision";
 import { computeStateBounds } from "~/utils/collision";
 
 /** Minimum zoom level (fully zoomed out). */
-const MIN_ZOOM = 0.2;
+export const MIN_ZOOM = 0.2;
 /** Maximum zoom level (fully zoomed in). */
-const MAX_ZOOM = 5;
+export const MAX_ZOOM = 5;
 /** Multiplier applied to wheel deltaY to control zoom speed. */
 const ZOOM_SENSITIVITY = 0.001;
+/** Multiplier per zoom button click (industry standard — Figma, Google Maps). */
+const ZOOM_STEP = 1.25;
 
 /**
  * Composable for SVG canvas pan and zoom interaction.
@@ -169,6 +171,43 @@ export function useCanvasInteraction(svgRef: Ref<SVGSVGElement | null>) {
     pan.y = centerY - (rect.height / zoom.value) / 2;
   }
 
+  /**
+   * Zoom to a target level, keeping the viewport center fixed in world space.
+   * Used by button-based zoom (unlike wheel zoom which centers on cursor).
+   */
+  function zoomToCenter(targetZoom: number) {
+    const svgEl = svgRef.value;
+    if (!svgEl) return;
+
+    const clamped = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, targetZoom));
+    const rect = svgEl.getBoundingClientRect();
+
+    // Current viewport center in world coords
+    const centerX = pan.x + (rect.width / zoom.value) / 2;
+    const centerY = pan.y + (rect.height / zoom.value) / 2;
+
+    zoom.value = clamped;
+
+    // Adjust pan so the same world point stays at viewport center
+    pan.x = centerX - (rect.width / clamped) / 2;
+    pan.y = centerY - (rect.height / clamped) / 2;
+  }
+
+  /** Zoom in by one step (1.25x). */
+  function zoomIn() {
+    zoomToCenter(zoom.value * ZOOM_STEP);
+  }
+
+  /** Zoom out by one step (÷1.25). */
+  function zoomOut() {
+    zoomToCenter(zoom.value / ZOOM_STEP);
+  }
+
+  /** Reset zoom to 100%. */
+  function resetZoom() {
+    zoomToCenter(1);
+  }
+
   return {
     pan,
     zoom,
@@ -181,5 +220,8 @@ export function useCanvasInteraction(svgRef: Ref<SVGSVGElement | null>) {
     onPanMove,
     onPanEnd,
     fitToContent,
+    zoomIn,
+    zoomOut,
+    resetZoom,
   };
 }

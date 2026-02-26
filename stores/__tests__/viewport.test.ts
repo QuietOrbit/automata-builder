@@ -19,4 +19,32 @@ describe("stores/viewport", () => {
     store.requestFitToContent();
     expect(store.fitRequestId).toBe(2);
   });
+
+  it("starts with isFullscreen as false", () => {
+    const store = useViewportStore();
+    expect(store.isFullscreen).toBe(false);
+  });
+
+  it("toggleFullscreen flips the boolean", () => {
+    const store = useViewportStore();
+    store.toggleFullscreen();
+    expect(store.isFullscreen).toBe(true);
+    store.toggleFullscreen();
+    expect(store.isFullscreen).toBe(false);
+  });
+
+  it("exitFullscreen sets to false", () => {
+    const store = useViewportStore();
+    store.toggleFullscreen();
+    expect(store.isFullscreen).toBe(true);
+    store.exitFullscreen();
+    expect(store.isFullscreen).toBe(false);
+  });
+
+  it("exitFullscreen is a no-op when already false", () => {
+    const store = useViewportStore();
+    expect(store.isFullscreen).toBe(false);
+    store.exitFullscreen();
+    expect(store.isFullscreen).toBe(false);
+  });
 });

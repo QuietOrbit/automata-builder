@@ -2,10 +2,12 @@
   <div class="workspace">
     <SvgCanvas class="canvas-area" />
     <div
+      v-show="!viewport.isFullscreen"
       class="resize-handle"
       @pointerdown="onPointerDown"
     />
     <aside
+      v-show="!viewport.isFullscreen"
       class="side-panel"
       :style="{ width: panelWidth + 'px' }"
     >
@@ -41,10 +43,12 @@
 import { ref } from "vue";
 import { useAutomatonStore } from "~/stores/automaton";
 import { useSimulationStore } from "~/stores/simulation";
+import { useViewportStore } from "~/stores/viewport";
 import { AutomatonType } from "~/types/automaton";
 
 const automaton = useAutomatonStore();
 const simulation = useSimulationStore();
+const viewport = useViewportStore();
 
 function setType(type: AutomatonType) {
   if (automaton.type === type) return;
