@@ -40,7 +40,9 @@ import { computed, ref } from "vue";
 import { useAutomatonStore } from "~/stores/automaton";
 import { useSimulationStore } from "~/stores/simulation";
 import { AutomatonType } from "~/types/automaton";
-import { removeEpsilonTransitions, subsetConstruction } from "~/utils/conversion";
+import { buildTupleData, ensureCompleteDfa, renameStatesSequentially, subsetConstruction, tupleToArrays } from "~/utils/conversion";
+import { minimizeDfa } from "~/utils/minimization";
+import { simplifyNfa } from "~/utils/regex/simplify";
 
 const automaton = useAutomatonStore();
 const simulation = useSimulationStore();
@@ -70,8 +72,9 @@ function handleRemoveEpsilon() {
   }
 
   try {
-    const result = removeEpsilonTransitions(automaton.states, automaton.transitions);
-    automaton.buildFromTuple(result);
+    const tuple = buildTupleData(automaton.states, automaton.transitions);
+    const simplified = simplifyNfa(tuple);
+    automaton.buildFromTuple(simplified);
     simulation.reset();
   }
   catch (e) {
@@ -88,8 +91,33 @@ function handleConvertToDfa() {
   }
 
   try {
-    const result = subsetConstruction(automaton.states, automaton.transitions, automaton.alphabet);
-    automaton.buildFromTuple(result);
+    // Step 1: Simplify NFA-ε → clean NFA (if epsilon transitions present)
+    let nfaStates = automaton.states;
+    let nfaTransitions = automaton.transitions;
+    let nfaAlphabet = automaton.alphabet;
+
+    if (automaton.hasEpsilonTransitions) {
+      const tuple = buildTupleData(nfaStates, nfaTransitions);
+      const cleanNfa = simplifyNfa(tuple);
+      const arrays = tupleToArrays(cleanNfa);
+      nfaStates = arrays.states;
+      nfaTransitions = arrays.transitions;
+      nfaAlphabet = cleanNfa.alphabet;
+    }
+
+    // Step 2: Subset construction (NFA → DFA)
+    const dfaTuple = subsetConstruction(nfaStates, nfaTransitions, nfaAlphabet);
+
+    // Step 3: Minimize DFA
+    const dfaArrays = tupleToArrays(dfaTuple);
+    const { tuple: minimized } = minimizeDfa(dfaArrays.states, dfaArrays.transitions);
+
+    // Step 4: Rename states sequentially (q0, q1, ...)
+    const renamed = renameStatesSequentially(minimized);
+
+    // Step 5: Add trap state for missing transitions (DFA totality)
+    const complete = ensureCompleteDfa(renamed);
+    automaton.buildFromTuple(complete);
     simulation.reset();
   }
   catch (e) {

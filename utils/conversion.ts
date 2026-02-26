@@ -7,6 +7,188 @@ import { epsilonClosure } from "~/utils/epsilon";
 const MAX_DFA_STATES = 1024;
 
 /**
+ * Convert raw automaton store data to TupleData format.
+ *
+ * Builds a name-based transition map from ID-based transitions.
+ * Epsilon transitions are included in the map (keyed by EPSILON)
+ * but excluded from the alphabet, so that downstream functions
+ * like {@link simplifyNfa} can handle ε-closure correctly.
+ *
+ * @param states      - All states in the automaton.
+ * @param transitions - All transitions (may include ε-transitions).
+ * @returns TupleData suitable for simplifyNfa or other processing.
+ */
+export function buildTupleData(
+  states: AutomatonState[],
+  transitions: Transition[],
+): TupleData {
+  const startState = states.find(s => s.isStart)!;
+  const idToName = new Map(states.map(s => [s.id, s.name]));
+
+  const transitionMap: Record<string, Record<string, string[]>> = {};
+  for (const t of transitions) {
+    const sourceName = idToName.get(t.sourceId)!;
+    const targetName = idToName.get(t.targetId)!;
+    if (!transitionMap[sourceName]) transitionMap[sourceName] = {};
+    if (!transitionMap[sourceName][t.symbol]) transitionMap[sourceName][t.symbol] = [];
+    if (!transitionMap[sourceName][t.symbol].includes(targetName)) {
+      transitionMap[sourceName][t.symbol].push(targetName);
+    }
+  }
+
+  // Sort target arrays for canonical ordering
+  for (const symbolMap of Object.values(transitionMap)) {
+    for (const [symbol, targets] of Object.entries(symbolMap)) {
+      symbolMap[symbol] = targets.toSorted((a, b) => a.localeCompare(b));
+    }
+  }
+
+  return {
+    type: AutomatonType.NFA,
+    states: states.map(s => s.name),
+    alphabet: collectAlphabet(transitions),
+    startState: startState.name,
+    acceptStates: states.filter(s => s.isAccept).map(s => s.name),
+    transitions: transitionMap,
+  };
+}
+
+/**
+ * Convert TupleData to minimal AutomatonState[] and Transition[] arrays.
+ *
+ * Creates lightweight state and transition objects suitable for passing
+ * to functions like {@link subsetConstruction} or {@link minimizeDfa}
+ * that operate on array-based formats. State names are used as IDs.
+ *
+ * @param tuple - TupleData to convert.
+ * @returns Object with states and transitions arrays.
+ */
+export function tupleToArrays(tuple: TupleData): {
+  states: AutomatonState[];
+  transitions: Transition[];
+} {
+  const acceptSet = new Set(tuple.acceptStates);
+
+  const states: AutomatonState[] = tuple.states.map(name => ({
+    id: name,
+    name,
+    position: { x: 0, y: 0 },
+    isStart: name === tuple.startState,
+    isAccept: acceptSet.has(name),
+  }));
+
+  const transitions: Transition[] = [];
+  for (const [source, symbolMap] of Object.entries(tuple.transitions)) {
+    for (const [symbol, targets] of Object.entries(symbolMap)) {
+      for (const target of targets) {
+        transitions.push({
+          id: `${source}-${symbol}-${target}`,
+          sourceId: source,
+          targetId: target,
+          symbol,
+        });
+      }
+    }
+  }
+
+  return { states, transitions };
+}
+
+/**
+ * Rename all states in a TupleData to sequential q0, q1, q2, ...
+ *
+ * The start state is always assigned q0. Remaining states preserve
+ * their original array order (typically BFS discovery order from
+ * subset construction). Transitions and accept states are remapped.
+ *
+ * @param tuple - TupleData with arbitrary state names (e.g., set notation).
+ * @returns New TupleData with sequential state names.
+ */
+export function renameStatesSequentially(tuple: TupleData): TupleData {
+  const { states, startState, acceptStates, alphabet, transitions, type } = tuple;
+
+  // Start state gets q0, rest follow in original order
+  const ordered = [startState, ...states.filter(s => s !== startState)];
+  const nameMap = new Map<string, string>();
+  for (let i = 0; i < ordered.length; i++) {
+    nameMap.set(ordered[i], `q${i}`);
+  }
+
+  const newTransitions: Record<string, Record<string, string[]>> = {};
+  for (const oldName of ordered) {
+    const symbolMap = transitions[oldName];
+    if (!symbolMap) continue;
+    const newName = nameMap.get(oldName)!;
+    const newSymbolMap: Record<string, string[]> = {};
+    for (const [symbol, targets] of Object.entries(symbolMap)) {
+      newSymbolMap[symbol] = targets
+        .map(t => nameMap.get(t)!)
+        .sort((a, b) => a.localeCompare(b));
+    }
+    newTransitions[newName] = newSymbolMap;
+  }
+
+  return {
+    type,
+    states: ordered.map(s => nameMap.get(s)!),
+    alphabet,
+    startState: "q0",
+    acceptStates: acceptStates
+      .map(s => nameMap.get(s)!)
+      .sort((a, b) => a.localeCompare(b)),
+    transitions: newTransitions,
+  };
+}
+
+/** Name used for the DFA trap/dead state. */
+const TRAP_STATE = "∅";
+
+/**
+ * Ensure a DFA has a transition for every state × symbol pair.
+ *
+ * DFAs require total transition functions. If any transitions are missing
+ * (typically after minimization removes unreachable dead states), this
+ * adds a trap state `q∅` with self-loops and routes all missing
+ * transitions there. Returns the tuple unchanged if already complete.
+ *
+ * @param tuple - A DFA TupleData that may have missing transitions.
+ * @returns Complete DFA with a trap state added if needed.
+ */
+export function ensureCompleteDfa(tuple: TupleData): TupleData {
+  const { states, alphabet, transitions } = tuple;
+
+  const hasMissing = states.some(name =>
+    alphabet.some(symbol => !transitions[name]?.[symbol]?.length),
+  );
+
+  if (!hasMissing) return tuple;
+
+  // Build trap state with self-loops
+  const trapTransitions: Record<string, string[]> = {};
+  for (const symbol of alphabet) {
+    trapTransitions[symbol] = [TRAP_STATE];
+  }
+
+  // Copy transitions, filling gaps with trap state
+  const newTransitions: Record<string, Record<string, string[]>> = {};
+  for (const name of states) {
+    const symbolMap: Record<string, string[]> = {};
+    for (const symbol of alphabet) {
+      const existing = transitions[name]?.[symbol];
+      symbolMap[symbol] = existing?.length ? existing : [TRAP_STATE];
+    }
+    newTransitions[name] = symbolMap;
+  }
+  newTransitions[TRAP_STATE] = trapTransitions;
+
+  return {
+    ...tuple,
+    states: [...states, TRAP_STATE],
+    transitions: newTransitions,
+  };
+}
+
+/**
  * Compute the non-epsilon alphabet from a set of transitions, sorted.
  *
  * @param transitions - All transitions in the automaton.
