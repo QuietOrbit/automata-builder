@@ -47,4 +47,32 @@ describe("stores/viewport", () => {
     store.exitFullscreen();
     expect(store.isFullscreen).toBe(false);
   });
+
+  it("starts with default viewport values", () => {
+    const store = useViewportStore();
+    expect(store.panX).toBe(0);
+    expect(store.panY).toBe(0);
+    expect(store.zoom).toBe(1);
+  });
+
+  it("syncViewport updates pan and zoom", () => {
+    const store = useViewportStore();
+    store.syncViewport(-200, -150, 1.5);
+    expect(store.panX).toBe(-200);
+    expect(store.panY).toBe(-150);
+    expect(store.zoom).toBe(1.5);
+  });
+
+  it("starts with viewportRestoreId at 0", () => {
+    const store = useViewportStore();
+    expect(store.viewportRestoreId).toBe(0);
+  });
+
+  it("requestViewportRestore increments the counter", () => {
+    const store = useViewportStore();
+    store.requestViewportRestore();
+    expect(store.viewportRestoreId).toBe(1);
+    store.requestViewportRestore();
+    expect(store.viewportRestoreId).toBe(2);
+  });
 });
