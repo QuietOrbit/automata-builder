@@ -1,9 +1,5 @@
 <template>
   <div class="simulation-panel">
-    <h3 class="panel-title">
-      Simulation
-    </h3>
-
     <!-- Input string -->
     <div class="field">
       <label

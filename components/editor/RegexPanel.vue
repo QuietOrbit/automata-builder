@@ -1,9 +1,5 @@
 <template>
   <div class="regex-panel">
-    <h3 class="panel-title">
-      Regular Expression
-    </h3>
-
     <div class="regex-input-group">
       <div class="regex-input-wrapper">
         <input

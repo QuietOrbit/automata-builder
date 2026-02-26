@@ -1,9 +1,5 @@
 <template>
   <div class="tuple-builder">
-    <h3 class="editor-title">
-      5-Tuple Definition
-    </h3>
-
     <!-- Name -->
     <div class="field">
       <label
