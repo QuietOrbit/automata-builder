@@ -12,12 +12,22 @@ export const useViewportStore = defineStore("viewport", {
   state: () => ({
     /** Monotonically increasing counter; each increment triggers a fit-to-content. */
     fitRequestId: 0,
+    /** Whether the canvas is in fullscreen mode (side panel hidden). */
+    isFullscreen: false,
   }),
 
   actions: {
     /** Signal that the canvas should re-center and zoom to fit all content. */
     requestFitToContent() {
       this.fitRequestId++;
+    },
+    /** Toggle fullscreen mode on or off. */
+    toggleFullscreen() {
+      this.isFullscreen = !this.isFullscreen;
+    },
+    /** Exit fullscreen mode (no-op if already not fullscreen). */
+    exitFullscreen() {
+      this.isFullscreen = false;
     },
   },
 });
