@@ -1,15 +1,9 @@
 <template>
   <div class="workspace">
     <SvgCanvas class="canvas-area" />
-    <div
-      v-show="!viewport.isFullscreen"
-      class="resize-handle"
-      @pointerdown="onPointerDown"
-    />
     <aside
       v-show="!viewport.isFullscreen"
       class="side-panel"
-      :style="{ width: panelWidth + 'px' }"
     >
       <div class="type-toggle-section">
         <span class="field-label">Type</span>
@@ -30,25 +24,55 @@
           </button>
         </div>
       </div>
-      <TupleBuilder />
-      <RegexPanel />
-      <ConversionPanel />
-      <MinimizationPanel />
-      <SimulationPanel />
+
+      <TabBar
+        :model-value="sidebar.activeTab"
+        @update:model-value="sidebar.setTab($event)"
+      />
+
+      <div class="sidebar-content">
+        <!-- Build tab -->
+        <div v-show="sidebar.activeTab === SidebarTab.Build">
+          <SidebarSection
+            section-id="build:tuple"
+            title="5-Tuple Definition"
+          >
+            <TupleBuilder />
+          </SidebarSection>
+          <SidebarSection
+            section-id="build:regex"
+            title="Regex Builder"
+          >
+            <RegexPanel />
+          </SidebarSection>
+        </div>
+
+        <!-- Transform tab -->
+        <div v-show="sidebar.activeTab === SidebarTab.Transform">
+          <ConversionPanel />
+          <MinimizationPanel />
+        </div>
+
+        <!-- Simulate tab -->
+        <div v-show="sidebar.activeTab === SidebarTab.Simulate">
+          <SimulationPanel />
+        </div>
+      </div>
     </aside>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
 import { useAutomatonStore } from "~/stores/automaton";
 import { useSimulationStore } from "~/stores/simulation";
 import { useViewportStore } from "~/stores/viewport";
-import { AutomatonType } from "~/types/automaton";
+import { useSidebarStore, SidebarTab } from "~/stores/sidebar";
+import { AutomatonType, SimulationStatus } from "~/types/automaton";
 
 const automaton = useAutomatonStore();
 const simulation = useSimulationStore();
 const viewport = useViewportStore();
+const sidebar = useSidebarStore();
 
 function setType(type: AutomatonType) {
   if (automaton.type === type) return;
@@ -56,29 +80,10 @@ function setType(type: AutomatonType) {
   simulation.reset();
 }
 
-const panelWidth = ref(320);
-const MIN_WIDTH = 200;
-const MAX_WIDTH = 600;
-
-function onPointerDown(e: PointerEvent) {
-  const handle = e.currentTarget as HTMLElement;
-  handle.setPointerCapture(e.pointerId);
-  document.body.style.userSelect = "none";
-  document.body.style.cursor = "col-resize";
-
-  const onPointerMove = (ev: PointerEvent) => {
-    const newWidth = window.innerWidth - ev.clientX;
-    panelWidth.value = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, newWidth));
-  };
-
-  const onPointerUp = () => {
-    document.body.style.userSelect = "";
-    document.body.style.cursor = "";
-    handle.removeEventListener("pointermove", onPointerMove);
-    handle.removeEventListener("pointerup", onPointerUp);
-  };
-
-  handle.addEventListener("pointermove", onPointerMove);
-  handle.addEventListener("pointerup", onPointerUp);
-}
+// Auto-switch to Simulate tab when simulation starts
+watch(() => simulation.status, (status) => {
+  if (status !== SimulationStatus.Idle) {
+    sidebar.setTab(SidebarTab.Simulate);
+  }
+});
 </script>
