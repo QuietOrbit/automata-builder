@@ -15,6 +15,7 @@
         v-model="nameInput"
         class="input"
         placeholder="My Automaton"
+        @blur="handleNameBlur"
       >
     </div>
 
@@ -209,8 +210,16 @@ watch(() => automaton.name, (val) => {
 });
 
 watch(nameInput, (value) => {
-  automaton.name = value.trim() || `Untitled ${automaton.type}`;
+  automaton.name = value.trim();
 });
+
+/** On blur, restore the default name if the field was left empty. */
+function handleNameBlur() {
+  if (nameInput.value.trim() === "") {
+    automaton.name = `Untitled ${automaton.type}`;
+    nameInput.value = automaton.name;
+  }
+}
 
 // --- States sync ---
 

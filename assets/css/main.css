@@ -971,6 +971,14 @@ body {
   color: var(--color-text-secondary);
 }
 
+.grid-row-header.row-hovered {
+  background: var(--color-input-border);
+}
+
+.grid-cell.row-hovered {
+  background: var(--color-input-border);
+}
+
 .grid-cell {
   background: var(--color-input-bg);
   border: none;

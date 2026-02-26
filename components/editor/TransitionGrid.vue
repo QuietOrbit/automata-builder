@@ -27,7 +27,12 @@
         v-for="target in automaton.states"
         :key="target.id"
       >
-        <div class="grid-row-header">
+        <div
+          class="grid-row-header"
+          :class="{ 'row-hovered': hoveredRowId === target.id }"
+          @pointerenter="onRowEnter(target.id)"
+          @pointerleave="onRowLeave"
+        >
           <span
             v-if="target.isStart"
             class="state-icon"
@@ -43,8 +48,10 @@
           v-for="symbol in columns"
           :key="target.id + ':' + symbol"
           class="grid-cell"
-          :class="cellClasses(target.id, symbol)"
+          :class="{ ...cellClasses(target.id, symbol), 'row-hovered': hoveredRowId === target.id }"
           :aria-label="`${symbol} to ${target.name}`"
+          @pointerenter="onRowEnter(target.id)"
+          @pointerleave="onRowLeave"
           @click="toggleTransition(target.id, symbol)"
         >
           <span class="cell-indicator" />
@@ -65,6 +72,7 @@
 <script setup lang="ts">
 import { AutomatonType, EPSILON } from "~/types/automaton";
 import { useAutomatonStore } from "~/stores/automaton";
+import { useHoverStore } from "~/stores/hover";
 
 const props = defineProps<{
   /** The state whose outgoing transitions are being edited. */
@@ -72,9 +80,25 @@ const props = defineProps<{
 }>();
 
 const automaton = useAutomatonStore();
+const hoverStore = useHoverStore();
 
 /** Key for tracking swap-out animation. Format: "targetId:symbol". */
 const swappingOut = ref<string | null>(null);
+
+/** Track which row is hovered for visual highlight + canvas state highlight. */
+const hoveredRowId = ref<string | null>(null);
+
+/** Highlight a row and the corresponding canvas state on pointer enter. */
+function onRowEnter(targetId: string) {
+  hoveredRowId.value = targetId;
+  hoverStore.setHoveredState(targetId);
+}
+
+/** Clear row and canvas state highlight on pointer leave. */
+function onRowLeave() {
+  hoveredRowId.value = null;
+  hoverStore.clearHoveredState();
+}
 
 /** Grid columns: alphabet symbols + ε for NFA. */
 const columns = computed(() => {
