@@ -349,11 +349,14 @@ body {
 
 .side-panel {
   flex-shrink: 0;
+  width: fit-content;
+  min-width: 280px;
+  max-width: 520px;
   border-left: 1px solid var(--color-panel-border);
   background: var(--color-panel-bg);
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .panel-empty {
@@ -526,6 +529,57 @@ body {
   background: var(--color-panel-border);
   margin: 0 2px;
   flex-shrink: 0;
+}
+
+/* ========================================
+   Sidebar Tabs & Sections
+   ======================================== */
+
+.sidebar-tab-bar {
+  display: flex;
+  gap: 4px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--color-panel-border);
+}
+
+.sidebar-tab-bar .btn {
+  flex: 1;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.sidebar-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid var(--color-panel-border);
+  transition: background-color 0.15s;
+}
+
+.sidebar-section-header:hover {
+  background: color-mix(in srgb, var(--color-panel-border) 50%, transparent);
+}
+
+.sidebar-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.sidebar-section-chevron {
+  color: var(--color-text-secondary);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.sidebar-section-chevron.expanded {
+  transform: rotate(90deg);
 }
 
 /* ========================================
@@ -874,7 +928,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  border-bottom: 1px solid var(--color-panel-border);
 }
 
 .regex-input-group {
@@ -1126,7 +1179,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  border-bottom: 1px solid var(--color-panel-border);
 }
 
 .conversion-buttons {
@@ -1150,7 +1202,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  border-bottom: 1px solid var(--color-panel-border);
 }
 
 .merge-summary {
@@ -1303,7 +1354,6 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px;
-  border-bottom: 1px solid var(--color-panel-border);
 }
 
 .tuple-builder {
@@ -1311,7 +1361,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  border-bottom: 1px solid var(--color-panel-border);
 }
 
 .tuple-type-toggle {
