@@ -5,7 +5,9 @@
           - composables/useCanvasInteraction.ts
           - composables/useDragState.ts
           - composables/useTransitionRouting.ts
+          - composables/useBubbleOffsets.ts
           - utils/geometry.ts
+          - utils/collision.ts
 
 "area: simulation":
   - changed-files:
@@ -14,11 +16,31 @@
           - composables/useSimulation.ts
           - components/simulation/**
 
-"area: nfa":
+"area: automaton":
   - changed-files:
       - any-glob-to-any-file:
-          - stores/simulation.ts
           - stores/automaton.ts
+          - types/automaton.ts
+
+"area: conversion":
+  - changed-files:
+      - any-glob-to-any-file:
+          - components/editor/ConversionPanel.vue
+          - utils/conversion.ts
+          - utils/epsilon.ts
+
+"area: minimization":
+  - changed-files:
+      - any-glob-to-any-file:
+          - components/editor/MinimizationPanel.vue
+          - utils/minimization.ts
+
+"area: regex":
+  - changed-files:
+      - any-glob-to-any-file:
+          - components/editor/RegexPanel.vue
+          - utils/regex/**
+          - types/regex.ts
 
 "area: export":
   - changed-files:
@@ -30,11 +52,15 @@
       - any-glob-to-any-file:
           - components/ui/**
           - assets/css/**
+          - layouts/**
+          - app.vue
 
 "area: 5-tuple":
   - changed-files:
       - any-glob-to-any-file:
           - components/editor/TupleBuilder.vue
+          - components/editor/TransitionGrid.vue
+          - components/editor/TargetSelect.vue
           - utils/layout.ts
 
 "ci/infra":
@@ -44,3 +70,6 @@
           - nuxt.config.ts
           - package.json
           - tsconfig.json
+          - vitest.config.ts
+          - eslint.config.mjs
+          - .codacy.yml

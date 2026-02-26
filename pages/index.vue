@@ -30,7 +30,7 @@
       </div>
       <TupleBuilder />
       <RegexPanel />
-      <!-- <ConversionPanel /> -->
+      <ConversionPanel />
       <MinimizationPanel />
       <SimulationPanel />
     </aside>
