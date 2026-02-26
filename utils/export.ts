@@ -1,5 +1,16 @@
 import type { Position } from "~/types/automaton";
 
+/** Minimal type for the File System Access API (Chromium only, not in all TS libs). */
+interface FileSystemAccessGlobal {
+  showSaveFilePicker: (options?: Record<string, unknown>) => Promise<{
+    getParent?: () => Promise<FileSystemDirectoryHandle>;
+    createWritable: () => Promise<{
+      write: (data: Blob) => Promise<void>;
+      close: () => Promise<void>;
+    }>;
+  }>;
+}
+
 interface Bounds {
   x: number;
   y: number;
@@ -202,12 +213,66 @@ export async function exportRasterBlob(
 
 /**
  * Trigger a browser download for a Blob with the given filename.
+ * Used as fallback when the File System Access API is unavailable.
  */
-export function triggerDownload(blob: Blob, filename: string): void {
+function triggerDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/** Cached directory handle for File System Access API (session-only, Chromium). */
+let lastDirectoryHandle: FileSystemDirectoryHandle | null = null;
+
+/**
+ * Save a Blob using the File System Access API (native save dialog) when available,
+ * falling back to blob+anchor download for unsupported browsers.
+ *
+ * In Chromium, caches the parent directory handle so subsequent exports
+ * in the same session default to the same folder.
+ *
+ * @param blob     - The file content to save.
+ * @param filename - Suggested filename (used in both native dialog and fallback).
+ * @param accept   - Optional MIME type filter for the save dialog.
+ */
+export async function saveBlob(
+  blob: Blob,
+  filename: string,
+  accept?: Record<string, string[]>,
+): Promise<void> {
+  if ("showSaveFilePicker" in globalThis) {
+    try {
+      const options: Record<string, unknown> = {
+        suggestedName: filename,
+      };
+      if (accept) {
+        options.types = [{ accept }];
+      }
+      if (lastDirectoryHandle) {
+        options.startIn = lastDirectoryHandle;
+      }
+
+      const handle = await (globalThis as unknown as FileSystemAccessGlobal).showSaveFilePicker(options);
+
+      // Cache parent directory for next export
+      if (typeof handle.getParent === "function") {
+        lastDirectoryHandle = await handle.getParent();
+      }
+
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return;
+    }
+    catch {
+      // User cancelled the dialog — do nothing
+      return;
+    }
+  }
+
+  // Fallback for Firefox/Safari
+  triggerDownload(blob, filename);
 }

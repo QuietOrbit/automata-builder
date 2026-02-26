@@ -170,7 +170,7 @@ const transitionGroups = computed(() => {
 });
 
 const svgRef = ref<SVGSVGElement | null>(null);
-const { viewBox, screenToWorld, worldToScreen, zoom, onWheel, onPanStart, onPanMove, onPanEnd, fitToContent, zoomIn, zoomOut, resetZoom }
+const { pan, viewBox, screenToWorld, worldToScreen, zoom, onWheel, onPanStart, onPanMove, onPanEnd, fitToContent, zoomIn, zoomOut, resetZoom }
   = useCanvasInteraction(svgRef);
 const { isDragging, dragTargetId, hasDragged, onDragStart, onDragMove, onDragEnd } = useDragState(screenToWorld);
 
@@ -183,6 +183,22 @@ const visibleBubbleStates = computed(() => {
   return [...ids]
     .map(id => automaton.getState(id))
     .filter((s): s is AutomatonState => s != null);
+});
+
+// Sync composable pan/zoom → viewport store (for export access)
+watch(
+  () => [pan.x, pan.y, zoom.value] as const,
+  ([x, y, z]) => {
+    viewport.syncViewport(x, y, z);
+  },
+  { immediate: true },
+);
+
+// Apply viewport from import (triggered by viewportRestoreId)
+watch(() => viewport.viewportRestoreId, () => {
+  pan.x = viewport.panX;
+  pan.y = viewport.panY;
+  zoom.value = viewport.zoom;
 });
 
 // Fit-to-content when signaled by the viewport store (e.g. after build/relayout)

@@ -129,12 +129,14 @@
 import { useAutomatonStore } from "~/stores/automaton";
 import { useSelectionStore } from "~/stores/selection";
 import { useSimulationStore } from "~/stores/simulation";
-import { exportSvgBlob, exportRasterBlob, triggerDownload } from "~/utils/export";
+import { useViewportStore } from "~/stores/viewport";
+import { exportSvgBlob, exportRasterBlob, saveBlob } from "~/utils/export";
 import type { AutomatonExport } from "~/types/automaton";
 
 const automaton = useAutomatonStore();
 const selection = useSelectionStore();
 const simulation = useSimulationStore();
+const viewport = useViewportStore();
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const exportMenuOpen = ref(false);
@@ -164,9 +166,14 @@ function getPositions() {
 function onExportJSON() {
   exportMenuOpen.value = false;
   const data = automaton.exportJSON();
+  data.viewport = {
+    panX: viewport.panX,
+    panY: viewport.panY,
+    zoom: viewport.zoom,
+  };
   const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], { type: "application/json" });
-  triggerDownload(blob, `${sanitizedName()}.json`);
+  saveBlob(blob, `${sanitizedName()}.json`, { "application/json": [".json"] });
 }
 
 function onExportSVG() {
@@ -175,7 +182,7 @@ function onExportSVG() {
   if (!svg) return;
   const blob = exportSvgBlob(svg, getPositions());
   if (!blob) return;
-  triggerDownload(blob, `${sanitizedName()}.svg`);
+  saveBlob(blob, `${sanitizedName()}.svg`, { "image/svg+xml": [".svg"] });
 }
 
 async function onExportPNG() {
@@ -184,7 +191,7 @@ async function onExportPNG() {
   if (!svg) return;
   const blob = await exportRasterBlob(svg, getPositions(), "png");
   if (!blob) return;
-  triggerDownload(blob, `${sanitizedName()}.png`);
+  saveBlob(blob, `${sanitizedName()}.png`, { "image/png": [".png"] });
 }
 
 async function onExportJPEG() {
@@ -193,7 +200,7 @@ async function onExportJPEG() {
   if (!svg) return;
   const blob = await exportRasterBlob(svg, getPositions(), "jpeg");
   if (!blob) return;
-  triggerDownload(blob, `${sanitizedName()}.jpeg`);
+  saveBlob(blob, `${sanitizedName()}.jpeg`, { "image/jpeg": [".jpeg", ".jpg"] });
 }
 
 function triggerImport() {
@@ -210,6 +217,15 @@ async function onImport(event: Event) {
     selection.clearSelection();
     simulation.setInput("");
     automaton.importJSON(data);
+
+    // Restore viewport if present, otherwise fit-to-content
+    if (data.viewport) {
+      viewport.syncViewport(data.viewport.panX, data.viewport.panY, data.viewport.zoom);
+      viewport.requestViewportRestore();
+    }
+    else {
+      viewport.requestFitToContent();
+    }
   }
   catch (e) {
     console.error("Failed to import automaton:", e);

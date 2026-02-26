@@ -14,6 +14,14 @@ export const useViewportStore = defineStore("viewport", {
     fitRequestId: 0,
     /** Whether the canvas is in fullscreen mode (side panel hidden). */
     isFullscreen: false,
+    /** Current pan X offset in world coordinates (synced from canvas composable). */
+    panX: 0,
+    /** Current pan Y offset in world coordinates (synced from canvas composable). */
+    panY: 0,
+    /** Current zoom level (synced from canvas composable). */
+    zoom: 1,
+    /** Monotonically increasing counter; each increment triggers a viewport restore. */
+    viewportRestoreId: 0,
   }),
 
   actions: {
@@ -28,6 +36,16 @@ export const useViewportStore = defineStore("viewport", {
     /** Exit fullscreen mode (no-op if already not fullscreen). */
     exitFullscreen() {
       this.isFullscreen = false;
+    },
+    /** Sync the viewport pan/zoom from the canvas composable. */
+    syncViewport(panX: number, panY: number, zoom: number) {
+      this.panX = panX;
+      this.panY = panY;
+      this.zoom = zoom;
+    },
+    /** Signal that imported viewport data should be applied to the canvas. */
+    requestViewportRestore() {
+      this.viewportRestoreId++;
     },
   },
 });

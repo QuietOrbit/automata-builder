@@ -96,10 +96,22 @@ export interface SimulationState {
   history: SimulationHistoryEntry[];
 }
 
+/** Viewport state (pan/zoom) for preserving the user's view across export/import. */
+export interface ViewportData {
+  /** Horizontal pan offset in world coordinates. */
+  panX: number;
+  /** Vertical pan offset in world coordinates. */
+  panY: number;
+  /** Zoom factor (1 = 100%). */
+  zoom: number;
+}
+
 /** Versioned wrapper for JSON import/export of an automaton. */
 export interface AutomatonExport {
   /** Schema version for forward compatibility. Currently always 1. */
   version: 1;
   /** The serialized automaton data. */
   automaton: Automaton;
+  /** Optional viewport state. Missing in exports from older versions. */
+  viewport?: ViewportData;
 }
