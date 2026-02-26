@@ -15,7 +15,9 @@ import {
   computeStraightPath,
   computeCurvedPath,
   computeStartArrowPath,
+  connectionRadius,
   STATE_RADIUS,
+  ACCEPT_RING_OFFSET,
   START_ARROW_LENGTH,
   LABEL_OFFSET,
 } from "../geometry";
@@ -310,6 +312,69 @@ describe("utils/geometry", () => {
       const startY = coords![0].split(" ")[1];
       const endY = coords![1].split(" ")[1];
       expect(startY).toBe(endY);
+    });
+  });
+
+  describe("computeSelfLoopPath with sector angle", () => {
+    const center = { x: 200, y: 200 };
+
+    it("places label above state for top sector (default)", () => {
+      const result = computeSelfLoopPath(center, STATE_RADIUS);
+      expect(result.labelPosition.y).toBeLessThan(center.y);
+      expect(result.labelPosition.x).toBeCloseTo(center.x, 0);
+    });
+
+    it("places label below state for bottom sector (PI/2)", () => {
+      const result = computeSelfLoopPath(center, STATE_RADIUS, Math.PI / 2);
+      expect(result.labelPosition.y).toBeGreaterThan(center.y);
+    });
+
+    it("places label right of state for right sector (0)", () => {
+      const result = computeSelfLoopPath(center, STATE_RADIUS, 0);
+      expect(result.labelPosition.x).toBeGreaterThan(center.x);
+    });
+
+    it("places label left of state for left sector (PI)", () => {
+      const result = computeSelfLoopPath(center, STATE_RADIUS, Math.PI);
+      expect(result.labelPosition.x).toBeLessThan(center.x);
+    });
+  });
+
+  // --- connectionRadius ---
+
+  describe("connectionRadius", () => {
+    it("returns STATE_RADIUS for non-accept states", () => {
+      expect(connectionRadius(false)).toBe(STATE_RADIUS);
+    });
+
+    it("returns STATE_RADIUS + ACCEPT_RING_OFFSET for accept states", () => {
+      expect(connectionRadius(true)).toBe(STATE_RADIUS + ACCEPT_RING_OFFSET);
+    });
+  });
+
+  // --- Accept state radii ---
+
+  describe("computeStraightPath with accept state", () => {
+    it("starts further from source when source is accept state", () => {
+      const source = { x: 0, y: 0 };
+      const target = { x: 200, y: 0 };
+      const normalResult = computeStraightPath(source, target, STATE_RADIUS, STATE_RADIUS);
+      const acceptResult = computeStraightPath(source, target, STATE_RADIUS + ACCEPT_RING_OFFSET, STATE_RADIUS);
+
+      const normalStartX = Number.parseFloat(normalResult.path.match(/^M ([\d.-]+)/)![1]);
+      const acceptStartX = Number.parseFloat(acceptResult.path.match(/^M ([\d.-]+)/)![1]);
+      expect(acceptStartX).toBeGreaterThan(normalStartX);
+    });
+
+    it("ends further from target when target is accept state", () => {
+      const source = { x: 0, y: 0 };
+      const target = { x: 200, y: 0 };
+      const normalResult = computeStraightPath(source, target, STATE_RADIUS, STATE_RADIUS);
+      const acceptResult = computeStraightPath(source, target, STATE_RADIUS, STATE_RADIUS + ACCEPT_RING_OFFSET);
+
+      const normalEndX = Number.parseFloat(normalResult.path.match(/L ([\d.-]+)/)![1]);
+      const acceptEndX = Number.parseFloat(acceptResult.path.match(/L ([\d.-]+)/)![1]);
+      expect(acceptEndX).toBeLessThan(normalEndX);
     });
   });
 });

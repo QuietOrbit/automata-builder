@@ -394,7 +394,7 @@ export const useAutomatonStore = defineStore("automaton", {
           type: this.type,
           alphabet: [...this.alphabet],
           states: this.states.map(s => ({ ...s, position: { ...s.position } })),
-          transitions: this.transitions.map(t => ({ ...t })),
+          transitions: this.transitions.map(t => ({ ...t, route: t.route ? { ...t.route } : undefined })),
         },
       };
     },

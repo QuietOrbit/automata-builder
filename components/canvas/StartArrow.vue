@@ -12,11 +12,11 @@
 
 <script setup lang="ts">
 import type { AutomatonState } from "~/types/automaton";
-import { STATE_RADIUS, computeStartArrowPath } from "~/utils/geometry";
+import { connectionRadius, computeStartArrowPath } from "~/utils/geometry";
 
 const props = defineProps<{
   state: AutomatonState;
 }>();
 
-const path = computed(() => computeStartArrowPath(props.state.position, STATE_RADIUS));
+const path = computed(() => computeStartArrowPath(props.state.position, connectionRadius(props.state.isAccept)));
 </script>
