@@ -5,6 +5,13 @@
         Automata Builder
       </h1>
       <span class="app-badge">{{ automaton.type }}</span>
+      <MenuBar>
+        <MenuBarMenu
+          label="Samples"
+          :groups="sampleGroups"
+          @select="onSelectSample"
+        />
+      </MenuBar>
     </div>
 
     <div class="header-actions">
@@ -131,6 +138,8 @@ import { useSelectionStore } from "~/stores/selection";
 import { useSimulationStore } from "~/stores/simulation";
 import { useViewportStore } from "~/stores/viewport";
 import { exportSvgBlob, exportRasterBlob, saveBlob } from "~/utils/export";
+import { SAMPLES, samplesByCategory } from "~/data/samples";
+import type { MenuGroup } from "~/components/ui/MenuBarMenu.vue";
 import type { AutomatonExport } from "~/types/automaton";
 
 const automaton = useAutomatonStore();
@@ -150,6 +159,31 @@ const dropdownStyle = computed(() => {
     left: `${rect.left}px`,
   };
 });
+
+const sampleGroups = computed<MenuGroup[]>(() => {
+  const groups: MenuGroup[] = [];
+  for (const [category, entries] of samplesByCategory()) {
+    groups.push({
+      label: category,
+      items: entries.map(e => ({ id: e.id, name: e.name, description: e.description })),
+    });
+  }
+  return groups;
+});
+
+function onSelectSample(id: string) {
+  const sample = SAMPLES.find(s => s.id === id);
+  if (!sample) return;
+
+  const hasContent = automaton.states.length > 0;
+  if (hasContent && !globalThis.confirm("This will replace the current automaton. Continue?")) {
+    return;
+  }
+
+  selection.clearSelection();
+  simulation.setInput("");
+  automaton.buildFromTuple(sample.tuple);
+}
 
 function sanitizedName(): string {
   return automaton.name.replaceAll(/\s+/g, "_");
