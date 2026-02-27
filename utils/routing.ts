@@ -10,7 +10,7 @@
  * @module routing
  */
 
-import type { AutomatonState, Transition } from "~/types/automaton";
+import type { AutomatonState, Transition, TransitionRoute } from "~/types/automaton";
 
 /** Number of sectors around each state. */
 const SECTOR_COUNT = 8;
@@ -148,7 +148,7 @@ function buildOccupancyMap(states: readonly AutomatonState[]): Map<string, numbe
  * Partition transitions into self-loops and regular (non-self-loop) transitions.
  * Pinned transitions are excluded from both lists.
  */
-function partitionTransitions(transitions: Transition[]): {
+function partitionTransitions(transitions: readonly Transition[]): {
   selfLoops: Transition[];
   regular: Transition[];
 } {
@@ -168,7 +168,7 @@ function partitionTransitions(transitions: Transition[]): {
 
 /** Count pinned routes into the occupancy map so unpinned arrows avoid them. */
 function countPinnedOccupancy(
-  transitions: Transition[],
+  transitions: readonly Transition[],
   occupancy: Map<string, number[]>,
 ): void {
   for (const t of transitions) {
@@ -251,33 +251,44 @@ function groupByStateSector(arrows: PendingArrow[]): Map<string, PendingArrow[]>
   return groups;
 }
 
-/** Write a resolved angle (degrees) onto a pending arrow's transition route. */
-function writeAngle(arrow: PendingArrow, angleDeg: number): void {
-  if (!arrow.transition.route) arrow.transition.route = {};
+/** Write a resolved angle (degrees) into the results map for a pending arrow's transition. */
+function writeAngle(
+  arrow: PendingArrow,
+  angleDeg: number,
+  results: Map<string, TransitionRoute>,
+): void {
+  let route = results.get(arrow.transition.id);
+  if (!route) {
+    route = {};
+    results.set(arrow.transition.id, route);
+  }
   if (arrow.side === "source") {
-    arrow.transition.route.sourceAngle = angleDeg;
+    route.sourceAngle = angleDeg;
   }
   else {
-    arrow.transition.route.targetAngle = angleDeg;
+    route.targetAngle = angleDeg;
   }
 }
 
 /** Assign clamped angles to each group, spreading when multiple arrows share a sector. */
-function assignAnglesFromGroups(groups: Map<string, PendingArrow[]>): void {
+function assignAnglesFromGroups(
+  groups: Map<string, PendingArrow[]>,
+  results: Map<string, TransitionRoute>,
+): void {
   for (const [, group] of groups) {
     const sectorCenter = SECTOR_ANGLES[group[0].sector];
 
     if (group.length <= 1) {
       for (const arrow of group) {
         const clamped = clampToSector(arrow.naturalAngle, sectorCenter);
-        writeAngle(arrow, clamped * (180 / Math.PI));
+        writeAngle(arrow, clamped * (180 / Math.PI), results);
       }
     }
     else {
       const naturalAngles = group.map(a => a.naturalAngle);
       const spread = spreadAnglesInSector(naturalAngles, sectorCenter);
       for (let i = 0; i < group.length; i++) {
-        writeAngle(group[i], spread[i] * (180 / Math.PI));
+        writeAngle(group[i], spread[i] * (180 / Math.PI), results);
       }
     }
   }
@@ -288,6 +299,7 @@ function assignSelfLoopSlots(
   selfLoops: Transition[],
   occupancy: Map<string, number[]>,
   stateById: Map<string, AutomatonState>,
+  results: Map<string, TransitionRoute>,
 ): void {
   for (const t of selfLoops) {
     const occ = occupancy.get(t.sourceId);
@@ -301,7 +313,7 @@ function assignSelfLoopSlots(
 
     const slot = findLeastOccupiedSector(occ, excluded);
     occ[slot]++;
-    t.route = { ...t.route, selfLoopSlot: slot };
+    results.set(t.id, { selfLoopSlot: slot });
   }
 }
 
@@ -310,19 +322,22 @@ function assignSelfLoopSlots(
 // ---------------------------------------------------------------------------
 
 /**
- * Run the global routing algorithm. Mutates transitions in place,
- * writing route data to each transition's `route` field.
+ * Run the global routing algorithm. Returns a map from transition ID
+ * to resolved route data, without mutating the input transitions.
  *
- * Pinned routes (route.pinned === true) are preserved unchanged.
+ * Pinned routes (route.pinned === true) are preserved unchanged and
+ * copied into the result map as-is.
  *
  * @param states - All states in the automaton.
- * @param transitions - All transitions (mutated in place with route data).
+ * @param transitions - All transitions (read-only, not mutated).
+ * @returns Map from transition ID to computed TransitionRoute.
  */
 export function computeRouting(
   states: readonly AutomatonState[],
-  transitions: Transition[],
-): void {
-  if (states.length === 0) return;
+  transitions: readonly Transition[],
+): Map<string, TransitionRoute> {
+  const results = new Map<string, TransitionRoute>();
+  if (states.length === 0) return results;
 
   const stateById = new Map<string, AutomatonState>();
   for (const s of states) stateById.set(s.id, s);
@@ -330,11 +345,19 @@ export function computeRouting(
   const occupancy = buildOccupancyMap(states);
   const { selfLoops, regular } = partitionTransitions(transitions);
 
+  // Copy pinned routes into results and count their occupancy
+  for (const t of transitions) {
+    if (t.route?.pinned) {
+      results.set(t.id, { ...t.route });
+    }
+  }
   countPinnedOccupancy(transitions, occupancy);
 
   const pending = buildPendingArrows(regular, stateById, occupancy);
   const groups = groupByStateSector(pending);
-  assignAnglesFromGroups(groups);
+  assignAnglesFromGroups(groups, results);
 
-  assignSelfLoopSlots(selfLoops, occupancy, stateById);
+  assignSelfLoopSlots(selfLoops, occupancy, stateById, results);
+
+  return results;
 }

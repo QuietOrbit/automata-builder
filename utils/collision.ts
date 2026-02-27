@@ -6,7 +6,7 @@
  * @module collision
  */
 
-import type { AutomatonState, Position, Transition } from "~/types/automaton";
+import type { AutomatonState, Position, Transition, TransitionRoute } from "~/types/automaton";
 import {
   STATE_RADIUS,
   SELF_LOOP_RADIUS,
@@ -209,6 +209,7 @@ export function resolveCollisions(
 export function buildVisualInfosFromStore(
   states: AutomatonState[],
   transitions: Transition[],
+  routeMap?: Map<string, TransitionRoute>,
 ): StateVisualInfo[] {
   // Pre-compute self-loop data: which states have self-loops, and the
   // combined label width (all symbols on that self-loop joined by ", ").
@@ -220,9 +221,10 @@ export function buildVisualInfosFromStore(
         existing.symbols.push(t.symbol);
       }
       else {
+        const route = routeMap?.get(t.id);
         selfLoopInfo.set(t.sourceId, {
           symbols: [t.symbol],
-          slot: t.route?.selfLoopSlot ?? 0,
+          slot: route?.selfLoopSlot ?? 0,
         });
       }
     }

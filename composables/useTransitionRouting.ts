@@ -1,4 +1,4 @@
-import type { Transition } from "~/types/automaton";
+import type { Transition, TransitionRoute } from "~/types/automaton";
 import { useAutomatonStore } from "~/stores/automaton";
 import {
   connectionRadius,
@@ -12,20 +12,21 @@ import { computeRouting, SECTOR_ANGLES } from "~/utils/routing";
 /**
  * Composable that computes SVG arrow geometry for transitions.
  *
- * On each reactive change to automaton states or transitions, the global
- * routing algorithm runs first (assigning sector slots and connection
- * angles). Then `getTransitionPath` uses the resolved route data to
- * select the appropriate path strategy: self-loops get a sector-placed
- * arc, unidirectional edges get a straight line, and bidirectional
- * edges get a curved path to avoid overlap.
+ * A computed route map is derived from automaton topology (states and
+ * transitions). The map is recalculated reactively whenever positions
+ * or transitions change, without mutating store state.
+ * `getTransitionPath` uses the route map to select the appropriate
+ * path strategy: self-loops get a sector-placed arc, unidirectional
+ * edges get a straight line, and bidirectional edges get a curved path.
  */
 export function useTransitionRouting() {
   const automaton = useAutomatonStore();
 
-  // Run the global routing algorithm whenever automaton topology changes.
-  // This writes `route` data onto each transition in place.
-  watchEffect(() => {
-    computeRouting(automaton.states, automaton.transitions);
+  // Derive route data reactively. Returns a Map<transitionId, TransitionRoute>.
+  // Because this is a computed (not a watchEffect), it never mutates store
+  // state and cannot trigger an infinite reactive loop.
+  const routeMap = computed<Map<string, TransitionRoute>>(() => {
+    return computeRouting(automaton.states, automaton.transitions);
   });
 
   /**
@@ -40,10 +41,11 @@ export function useTransitionRouting() {
 
     const sourceR = connectionRadius(source.isAccept);
     const targetR = connectionRadius(target.isAccept);
+    const route = routeMap.value.get(transition.id);
 
     // Self-loop — use routed sector slot or fall back to top
     if (transition.sourceId === transition.targetId) {
-      const slot = transition.route?.selfLoopSlot ?? 0;
+      const slot = route?.selfLoopSlot ?? 0;
       return computeSelfLoopPath(source.position, sourceR, SECTOR_ANGLES[slot]);
     }
 
