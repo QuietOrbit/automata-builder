@@ -46,7 +46,8 @@ export function useTransitionRouting() {
     // Self-loop — use routed sector slot or fall back to top
     if (transition.sourceId === transition.targetId) {
       const slot = route?.selfLoopSlot ?? 0;
-      return computeSelfLoopPath(source.position, sourceR, SECTOR_ANGLES[slot]);
+      const sectorAngle = SECTOR_ANGLES.at(slot) ?? SECTOR_ANGLES.at(0) ?? (-Math.PI / 2);
+      return computeSelfLoopPath(source.position, sourceR, sectorAngle);
     }
 
     // Check if a reverse direction exists

@@ -26,8 +26,9 @@ describe("utils/routing", () => {
       const states = [makeState("q0", 0, 0)];
       const transitions = [makeTransition("t1", "q0", "q0")];
       const routes = computeRouting(states, transitions);
-      expect(routes.get("t1")).toBeDefined();
-      expect(routes.get("t1")!.selfLoopSlot).toBe(0); // N = top
+      const route = routes.get("t1");
+      expect(route).toBeDefined();
+      expect(route?.selfLoopSlot).toBe(0); // N = top
     });
 
     it("assigns self-loop away from incoming transitions", () => {
@@ -42,7 +43,9 @@ describe("utils/routing", () => {
         makeTransition("t2", "q0", "q0", "b"),
       ];
       const routes = computeRouting(states, transitions);
-      expect(routes.get("t2")!.selfLoopSlot).not.toBe(0); // not top
+      const route = routes.get("t2");
+      expect(route).toBeDefined();
+      expect(route?.selfLoopSlot).not.toBe(0); // not top
     });
 
     it("assigns sourceAngle and targetAngle for non-self-loop transitions", () => {
@@ -52,9 +55,10 @@ describe("utils/routing", () => {
       ];
       const transitions = [makeTransition("t1", "q0", "q1")];
       const routes = computeRouting(states, transitions);
-      expect(routes.get("t1")).toBeDefined();
-      expect(routes.get("t1")!.sourceAngle).toBeDefined();
-      expect(routes.get("t1")!.targetAngle).toBeDefined();
+      const route = routes.get("t1");
+      expect(route).toBeDefined();
+      expect(route?.sourceAngle).toBeDefined();
+      expect(route?.targetAngle).toBeDefined();
     });
 
     it("does not overwrite pinned routes", () => {
@@ -65,8 +69,10 @@ describe("utils/routing", () => {
       const transitions = [makeTransition("t1", "q0", "q1")];
       transitions[0].route = { sourceAngle: 42, targetAngle: 222, pinned: true };
       const routes = computeRouting(states, transitions);
-      expect(routes.get("t1")!.sourceAngle).toBe(42);
-      expect(routes.get("t1")!.targetAngle).toBe(222);
+      const route = routes.get("t1");
+      expect(route).toBeDefined();
+      expect(route?.sourceAngle).toBe(42);
+      expect(route?.targetAngle).toBe(222);
     });
 
     it("spreads multiple arrows in the same sector", () => {
@@ -82,8 +88,12 @@ describe("utils/routing", () => {
       ];
       const routes = computeRouting(states, transitions);
       // Source angles from q0 should be different (spread)
-      const angle1 = routes.get("t1")!.sourceAngle!;
-      const angle2 = routes.get("t2")!.sourceAngle!;
+      const route1 = routes.get("t1");
+      const route2 = routes.get("t2");
+      expect(route1?.sourceAngle).toBeDefined();
+      expect(route2?.sourceAngle).toBeDefined();
+      const angle1 = route1?.sourceAngle ?? 0;
+      const angle2 = route2?.sourceAngle ?? 0;
       expect(angle1).not.toBeCloseTo(angle2, 0);
     });
 
@@ -91,8 +101,10 @@ describe("utils/routing", () => {
       const states = [makeState("q0", 0, 0, { isStart: true })];
       const transitions = [makeTransition("t1", "q0", "q0", "a")];
       const routes = computeRouting(states, transitions);
+      const route = routes.get("t1");
+      expect(route).toBeDefined();
       // Self-loop should not be on the left (W = slot 6) since start arrow is there
-      expect(routes.get("t1")!.selfLoopSlot).not.toBe(6);
+      expect(route?.selfLoopSlot).not.toBe(6);
     });
 
     it("clamps angles within their sector boundary", () => {
@@ -120,7 +132,9 @@ describe("utils/routing", () => {
       const eastCenter = 0; // SECTOR_ANGLES[2] = 0 (east)
 
       for (const t of transitions) {
-        const sourceRad = routes.get(t.id)!.sourceAngle! * (Math.PI / 180);
+        const route = routes.get(t.id);
+        expect(route?.sourceAngle).toBeDefined();
+        const sourceRad = (route?.sourceAngle ?? 0) * (Math.PI / 180);
         const diff = Math.abs(sourceRad - eastCenter);
         expect(diff).toBeLessThanOrEqual(sectorHalfWidth + 0.001);
       }

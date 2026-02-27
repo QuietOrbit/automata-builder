@@ -54,7 +54,8 @@ function angleToSector(angle: number): number {
   let best = 0;
   let bestDist = Infinity;
   for (let i = 0; i < SECTOR_COUNT; i++) {
-    const diff = Math.abs(normalizeAngle(normalized - SECTOR_ANGLES[i]));
+    const sectorAngle = SECTOR_ANGLES.at(i) ?? 0;
+    const diff = Math.abs(normalizeAngle(normalized - sectorAngle));
     if (diff < bestDist) {
       bestDist = diff;
       best = i;
@@ -77,21 +78,23 @@ function clampToSector(angle: number, sectorCenter: number): number {
  * Find the sector with the lowest occupancy, excluding specific sectors.
  * Ties are broken by preferring top (0), then cycling through sectors.
  */
-function findLeastOccupiedSector(occupancy: number[], excluded: Set<number>): number {
+function findLeastOccupiedSector(occupancy: Map<number, number>, excluded: Set<number>): number {
   let best = -1;
   let bestCount = Infinity;
   const preferenceOrder = [0, 4, 2, 6, 1, 3, 5, 7]; // N, S, E, W, then diagonals
   for (const i of preferenceOrder) {
     if (excluded.has(i)) continue;
-    if (occupancy[i] < bestCount) {
-      bestCount = occupancy[i];
+    const count = occupancy.get(i) ?? 0;
+    if (count < bestCount) {
+      bestCount = count;
       best = i;
     }
   }
   if (best === -1) {
     for (let i = 0; i < SECTOR_COUNT; i++) {
-      if (occupancy[i] < bestCount) {
-        bestCount = occupancy[i];
+      const count = occupancy.get(i) ?? 0;
+      if (count < bestCount) {
+        bestCount = count;
         best = i;
       }
     }
@@ -132,12 +135,13 @@ interface PendingArrow {
 }
 
 /** Build a per-state occupancy map, pre-seeding start arrow slots. */
-function buildOccupancyMap(states: readonly AutomatonState[]): Map<string, number[]> {
-  const map = new Map<string, number[]>();
+function buildOccupancyMap(states: readonly AutomatonState[]): Map<string, Map<number, number>> {
+  const map = new Map<string, Map<number, number>>();
   for (const s of states) {
-    const occupancy = new Array<number>(SECTOR_COUNT).fill(0);
+    const occupancy = new Map<number, number>();
+    for (let i = 0; i < SECTOR_COUNT; i++) occupancy.set(i, 0);
     if (s.isStart) {
-      occupancy[START_ARROW_SECTOR]++;
+      occupancy.set(START_ARROW_SECTOR, (occupancy.get(START_ARROW_SECTOR) ?? 0) + 1);
     }
     map.set(s.id, occupancy);
   }
@@ -169,14 +173,14 @@ function partitionTransitions(transitions: readonly Transition[]): {
 /** Count pinned routes into the occupancy map so unpinned arrows avoid them. */
 function countPinnedOccupancy(
   transitions: readonly Transition[],
-  occupancy: Map<string, number[]>,
+  occupancy: Map<string, Map<number, number>>,
 ): void {
   for (const t of transitions) {
     if (!t.route?.pinned) continue;
     if (t.sourceId === t.targetId) {
       const slot = t.route.selfLoopSlot ?? 0;
       const occ = occupancy.get(t.sourceId);
-      if (occ) occ[slot]++;
+      if (occ) occ.set(slot, (occ.get(slot) ?? 0) + 1);
     }
     else {
       countPinnedEndpoint(t.route.sourceAngle, t.sourceId, occupancy);
@@ -189,12 +193,12 @@ function countPinnedOccupancy(
 function countPinnedEndpoint(
   angleDeg: number | undefined,
   stateId: string,
-  occupancy: Map<string, number[]>,
+  occupancy: Map<string, Map<number, number>>,
 ): void {
   if (angleDeg === undefined) return;
   const sector = angleToSector(angleDeg * (Math.PI / 180));
   const occ = occupancy.get(stateId);
-  if (occ) occ[sector]++;
+  if (occ) occ.set(sector, (occ.get(sector) ?? 0) + 1);
 }
 
 /**
@@ -204,7 +208,7 @@ function countPinnedEndpoint(
 function buildPendingArrows(
   regular: Transition[],
   stateById: Map<string, AutomatonState>,
-  occupancy: Map<string, number[]>,
+  occupancy: Map<string, Map<number, number>>,
 ): PendingArrow[] {
   const pending: PendingArrow[] = [];
 
@@ -227,9 +231,9 @@ function buildPendingArrows(
     );
 
     const sourceOcc = occupancy.get(source.id);
-    if (sourceOcc) sourceOcc[sourceSector]++;
+    if (sourceOcc) sourceOcc.set(sourceSector, (sourceOcc.get(sourceSector) ?? 0) + 1);
     const targetOcc = occupancy.get(target.id);
-    if (targetOcc) targetOcc[targetSector]++;
+    if (targetOcc) targetOcc.set(targetSector, (targetOcc.get(targetSector) ?? 0) + 1);
   }
 
   return pending;
@@ -276,7 +280,9 @@ function assignAnglesFromGroups(
   results: Map<string, TransitionRoute>,
 ): void {
   for (const [, group] of groups) {
-    const sectorCenter = SECTOR_ANGLES[group[0].sector];
+    const firstArrow = group.at(0);
+    if (!firstArrow) continue;
+    const sectorCenter = SECTOR_ANGLES.at(firstArrow.sector) ?? 0;
 
     if (group.length <= 1) {
       for (const arrow of group) {
@@ -287,8 +293,9 @@ function assignAnglesFromGroups(
     else {
       const naturalAngles = group.map(a => a.naturalAngle);
       const spread = spreadAnglesInSector(naturalAngles, sectorCenter);
-      for (let i = 0; i < group.length; i++) {
-        writeAngle(group[i], spread[i] * (180 / Math.PI), results);
+      for (const [i, arrow] of group.entries()) {
+        const angle = spread.at(i) ?? 0;
+        writeAngle(arrow, angle * (180 / Math.PI), results);
       }
     }
   }
@@ -297,7 +304,7 @@ function assignAnglesFromGroups(
 /** Assign each self-loop to the least occupied sector on its state. */
 function assignSelfLoopSlots(
   selfLoops: Transition[],
-  occupancy: Map<string, number[]>,
+  occupancy: Map<string, Map<number, number>>,
   stateById: Map<string, AutomatonState>,
   results: Map<string, TransitionRoute>,
 ): void {
@@ -312,7 +319,7 @@ function assignSelfLoopSlots(
     }
 
     const slot = findLeastOccupiedSector(occ, excluded);
-    occ[slot]++;
+    occ.set(slot, (occ.get(slot) ?? 0) + 1);
     results.set(t.id, { selfLoopSlot: slot });
   }
 }

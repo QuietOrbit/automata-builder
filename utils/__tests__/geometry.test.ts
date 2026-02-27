@@ -361,8 +361,12 @@ describe("utils/geometry", () => {
       const normalResult = computeStraightPath(source, target, STATE_RADIUS, STATE_RADIUS);
       const acceptResult = computeStraightPath(source, target, STATE_RADIUS + ACCEPT_RING_OFFSET, STATE_RADIUS);
 
-      const normalStartX = Number.parseFloat(normalResult.path.match(/^M ([\d.-]+)/)![1]);
-      const acceptStartX = Number.parseFloat(acceptResult.path.match(/^M ([\d.-]+)/)![1]);
+      const normalMatch = normalResult.path.match(/^M ([\d.-]+)/);
+      const acceptMatch = acceptResult.path.match(/^M ([\d.-]+)/);
+      expect(normalMatch).not.toBeNull();
+      expect(acceptMatch).not.toBeNull();
+      const normalStartX = Number.parseFloat(normalMatch?.[1] ?? "0");
+      const acceptStartX = Number.parseFloat(acceptMatch?.[1] ?? "0");
       expect(acceptStartX).toBeGreaterThan(normalStartX);
     });
 
@@ -372,8 +376,12 @@ describe("utils/geometry", () => {
       const normalResult = computeStraightPath(source, target, STATE_RADIUS, STATE_RADIUS);
       const acceptResult = computeStraightPath(source, target, STATE_RADIUS, STATE_RADIUS + ACCEPT_RING_OFFSET);
 
-      const normalEndX = Number.parseFloat(normalResult.path.match(/L ([\d.-]+)/)![1]);
-      const acceptEndX = Number.parseFloat(acceptResult.path.match(/L ([\d.-]+)/)![1]);
+      const normalMatch = normalResult.path.match(/L ([\d.-]+)/);
+      const acceptMatch = acceptResult.path.match(/L ([\d.-]+)/);
+      expect(normalMatch).not.toBeNull();
+      expect(acceptMatch).not.toBeNull();
+      const normalEndX = Number.parseFloat(normalMatch?.[1] ?? "0");
+      const acceptEndX = Number.parseFloat(acceptMatch?.[1] ?? "0");
       expect(acceptEndX).toBeLessThan(normalEndX);
     });
   });
