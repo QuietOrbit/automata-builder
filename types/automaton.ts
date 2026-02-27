@@ -18,6 +18,18 @@ export interface AutomatonState {
   isAccept: boolean;
 }
 
+/** Resolved routing data for a transition arrow's connection angles. */
+export interface TransitionRoute {
+  /** For self-loops: sector slot (0-7, mapping to N/NE/E/SE/S/SW/W/NW). */
+  selfLoopSlot?: number;
+  /** Angle in degrees where the arrow leaves the source state boundary. */
+  sourceAngle?: number;
+  /** Angle in degrees where the arrow enters the target state boundary. */
+  targetAngle?: number;
+  /** Whether this route was manually set by the user (immune to auto-recompute). */
+  pinned?: boolean;
+}
+
 /** A directed edge in the automaton, connecting a source state to a target on a given symbol. */
 export interface Transition {
   /** Unique identifier for this transition. */
@@ -28,6 +40,8 @@ export interface Transition {
   targetId: string;
   /** The input symbol that triggers this transition. */
   symbol: string;
+  /** Resolved routing data (auto-computed or manually pinned). */
+  route?: TransitionRoute;
 }
 
 /** The epsilon symbol used for NFA epsilon-transitions. */

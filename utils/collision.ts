@@ -6,12 +6,13 @@
  * @module collision
  */
 
-import type { AutomatonState, Position, Transition } from "~/types/automaton";
+import type { AutomatonState, Position, Transition, TransitionRoute } from "~/types/automaton";
 import {
   STATE_RADIUS,
   SELF_LOOP_RADIUS,
   START_ARROW_LENGTH,
 } from "~/utils/geometry";
+import { SECTOR_ANGLES } from "~/utils/routing";
 
 /** Axis-aligned bounding box. */
 export interface AABB {
@@ -29,6 +30,8 @@ export interface StateVisualInfo {
   selfLoopLabelWidth: number;
   /** Estimated pixel width of the state name label. */
   nameLabelWidth: number;
+  /** Sector slot for self-loop placement (0-7). Defaults to 0 (top). */
+  selfLoopSlot: number;
 }
 
 /** Approximate character width (px) for estimating label text extent. */
@@ -64,19 +67,22 @@ export function computeStateBounds(info: StateVisualInfo): AABB {
   let minX = info.position.x - halfWidth;
   let maxX = info.position.x + halfWidth;
   let minY = info.position.y - r;
-  const maxY = info.position.y + r;
+  let maxY = info.position.y + r;
 
-  // Self-loop extends upward: arc top + label
+  // Self-loop extends in the direction of its sector slot
   if (info.hasSelfLoop) {
+    const sectorAngle = SECTOR_ANGLES[info.selfLoopSlot];
+    const labelDistance = STATE_RADIUS + SELF_LOOP_RADIUS * 2 + 8;
     const labelHalfHeight = 10;
-    const loopTop = info.position.y - STATE_RADIUS - SELF_LOOP_RADIUS * 2 - 8 - labelHalfHeight;
-    if (loopTop < minY) minY = loopTop;
+
+    const loopX = info.position.x + labelDistance * Math.cos(sectorAngle);
+    const loopY = info.position.y + labelDistance * Math.sin(sectorAngle);
 
     const labelHalfWidth = (info.selfLoopLabelWidth * CHAR_WIDTH) / 2;
-    const labelLeft = info.position.x - labelHalfWidth;
-    const labelRight = info.position.x + labelHalfWidth;
-    if (labelLeft < minX) minX = labelLeft;
-    if (labelRight > maxX) maxX = labelRight;
+    if (loopX - labelHalfWidth < minX) minX = loopX - labelHalfWidth;
+    if (loopX + labelHalfWidth > maxX) maxX = loopX + labelHalfWidth;
+    if (loopY - labelHalfHeight < minY) minY = loopY - labelHalfHeight;
+    if (loopY + labelHalfHeight > maxY) maxY = loopY + labelHalfHeight;
   }
 
   // Start arrow extends to the left
@@ -203,32 +209,38 @@ export function resolveCollisions(
 export function buildVisualInfosFromStore(
   states: AutomatonState[],
   transitions: Transition[],
+  routeMap?: Map<string, TransitionRoute>,
 ): StateVisualInfo[] {
   // Pre-compute self-loop data: which states have self-loops, and the
   // combined label width (all symbols on that self-loop joined by ", ").
-  const selfLoopSymbols = new Map<string, string[]>();
+  const selfLoopInfo = new Map<string, { symbols: string[]; slot: number }>();
   for (const t of transitions) {
     if (t.sourceId === t.targetId) {
-      const existing = selfLoopSymbols.get(t.sourceId);
+      const existing = selfLoopInfo.get(t.sourceId);
       if (existing) {
-        existing.push(t.symbol);
+        existing.symbols.push(t.symbol);
       }
       else {
-        selfLoopSymbols.set(t.sourceId, [t.symbol]);
+        const route = routeMap?.get(t.id);
+        selfLoopInfo.set(t.sourceId, {
+          symbols: [t.symbol],
+          slot: route?.selfLoopSlot ?? 0,
+        });
       }
     }
   }
 
   return states.map((s) => {
-    const symbols = selfLoopSymbols.get(s.id);
-    const hasSelfLoop = symbols !== undefined;
-    const labelText = hasSelfLoop ? symbols.join(", ") : "";
+    const info = selfLoopInfo.get(s.id);
+    const hasSelfLoop = info !== undefined;
+    const labelText = hasSelfLoop ? info.symbols.join(", ") : "";
     return {
       position: s.position,
       hasSelfLoop,
       isStart: s.isStart,
       selfLoopLabelWidth: labelText.length,
       nameLabelWidth: estimateNameLabelWidth(s.name.length),
+      selfLoopSlot: info?.slot ?? 0,
     };
   });
 }
@@ -261,6 +273,7 @@ export function buildVisualInfosFromTuple(
       isStart: name === startState,
       selfLoopLabelWidth: labelText.length,
       nameLabelWidth: estimateNameLabelWidth(name.length),
+      selfLoopSlot: 0,
     };
   });
 }

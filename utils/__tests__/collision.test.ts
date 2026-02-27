@@ -8,7 +8,7 @@ import {
   resolveCollisions,
 } from "../collision";
 import type { AABB, StateVisualInfo } from "../collision";
-import { STATE_RADIUS, START_ARROW_LENGTH } from "../geometry";
+import { STATE_RADIUS, SELF_LOOP_RADIUS, START_ARROW_LENGTH } from "../geometry";
 
 describe("utils/collision", () => {
   describe("computeStateBounds", () => {
@@ -21,6 +21,7 @@ describe("utils/collision", () => {
         isStart: false,
         selfLoopLabelWidth: 0,
         nameLabelWidth: 0,
+        selfLoopSlot: 0,
       };
       const bounds = computeStateBounds(info);
       const r = STATE_RADIUS + CIRCLE_PADDING;
@@ -38,6 +39,7 @@ describe("utils/collision", () => {
         isStart: false,
         selfLoopLabelWidth: 0,
         nameLabelWidth: 0,
+        selfLoopSlot: 0,
       };
       const start: StateVisualInfo = { ...plain, isStart: true };
 
@@ -55,6 +57,7 @@ describe("utils/collision", () => {
         isStart: false,
         selfLoopLabelWidth: 0,
         nameLabelWidth: 0,
+        selfLoopSlot: 0,
       };
       const looped: StateVisualInfo = {
         ...plain,
@@ -75,6 +78,7 @@ describe("utils/collision", () => {
         isStart: false,
         selfLoopLabelWidth: 1,
         nameLabelWidth: 0,
+        selfLoopSlot: 0,
       };
       const wide: StateVisualInfo = { ...narrow, selfLoopLabelWidth: 20 };
 
@@ -93,6 +97,7 @@ describe("utils/collision", () => {
         isStart: false,
         selfLoopLabelWidth: 0,
         nameLabelWidth: 20,
+        selfLoopSlot: 0,
       };
       const wide: StateVisualInfo = { ...short, nameLabelWidth: 120 };
 
@@ -105,6 +110,34 @@ describe("utils/collision", () => {
       // Wide label should extend 60px each side from center
       expect(wideBounds.minX).toBe(100 - 60);
       expect(wideBounds.maxX).toBe(100 + 60);
+    });
+
+    it("extends bounds downward for bottom self-loop (slot 4)", () => {
+      const info: StateVisualInfo = {
+        position: { x: 100, y: 100 },
+        hasSelfLoop: true,
+        isStart: false,
+        selfLoopLabelWidth: 1,
+        nameLabelWidth: 0,
+        selfLoopSlot: 4, // S = bottom
+      };
+      const bounds = computeStateBounds(info);
+      const CIRCLE_PADDING = 5;
+      expect(bounds.maxY).toBeGreaterThan(100 + STATE_RADIUS + CIRCLE_PADDING);
+    });
+
+    it("extends bounds rightward for right self-loop (slot 2)", () => {
+      const info: StateVisualInfo = {
+        position: { x: 100, y: 100 },
+        hasSelfLoop: true,
+        isStart: false,
+        selfLoopLabelWidth: 1,
+        nameLabelWidth: 0,
+        selfLoopSlot: 2, // E = right
+      };
+      const bounds = computeStateBounds(info);
+      const labelDistance = STATE_RADIUS + SELF_LOOP_RADIUS * 2 + 8;
+      expect(bounds.maxX).toBeGreaterThanOrEqual(100 + labelDistance);
     });
   });
 
@@ -141,6 +174,7 @@ describe("utils/collision", () => {
         isStart: false,
         selfLoopLabelWidth: 0,
         nameLabelWidth: 0,
+        selfLoopSlot: 0,
       }));
 
       resolveCollisions(positions, infos);
@@ -160,6 +194,7 @@ describe("utils/collision", () => {
         isStart: false,
         selfLoopLabelWidth: 0,
         nameLabelWidth: 0,
+        selfLoopSlot: 0,
       }));
 
       resolveCollisions(positions, infos);
@@ -181,6 +216,7 @@ describe("utils/collision", () => {
         isStart: false,
         selfLoopLabelWidth: 0,
         nameLabelWidth: 0,
+        selfLoopSlot: 0,
       }));
 
       // Should not throw, even if not fully resolved

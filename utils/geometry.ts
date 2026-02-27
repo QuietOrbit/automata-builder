@@ -18,6 +18,17 @@ export const LABEL_OFFSET = 15;
 /** Length of the horizontal arrow that points to the start state. */
 export const START_ARROW_LENGTH = 45;
 
+/** Offset between the main circle and the accept ring. */
+export const ACCEPT_RING_OFFSET = 5;
+
+/**
+ * Get the effective circle radius for arrow connection points.
+ * Accept states use the outer ring; normal states use the base circle.
+ */
+export function connectionRadius(isAccept: boolean): number {
+  return isAccept ? STATE_RADIUS + ACCEPT_RING_OFFSET : STATE_RADIUS;
+}
+
 // --- Vector operations ---
 
 /** Add two vectors component-wise. */
@@ -130,19 +141,24 @@ export interface TransitionPath {
 const SELF_LOOP_ARROW_INSET = 8;
 
 /**
- * Compute the SVG path for a self-loop arc above a state node.
+ * Compute the SVG path for a self-loop arc around a state node.
  *
- * The arc runs from the upper-left to upper-right of the circle boundary.
- * A short straight segment at the end points radially inward so the
- * arrowhead marker aligns toward the state center instead of following
- * the arc's tangent.
+ * The arc spans ±30° around the sector center angle. A short straight
+ * segment at the end points radially inward so the arrowhead marker
+ * aligns toward the state center instead of following the arc's tangent.
  *
  * @param center - Center position of the state.
  * @param radius - Radius of the state circle.
+ * @param sectorAngle - Center angle of the sector in radians. Defaults to -PI/2 (top).
  */
-export function computeSelfLoopPath(center: Position, radius: number): TransitionPath {
-  const angleLeft = -Math.PI / 2 - Math.PI / 6; // -120 degrees
-  const angleRight = -Math.PI / 2 + Math.PI / 6; // -60 degrees
+export function computeSelfLoopPath(
+  center: Position,
+  radius: number,
+  sectorAngle: number = -Math.PI / 2,
+): TransitionPath {
+  const arcSpan = Math.PI / 6; // 30 degrees each side of center
+  const angleLeft = sectorAngle - arcSpan;
+  const angleRight = sectorAngle + arcSpan;
 
   const start = circlePointAtAngle(center, radius, angleLeft);
   const arcEnd = circlePointAtAngle(center, radius + SELF_LOOP_ARROW_INSET, angleRight);
@@ -154,9 +170,10 @@ export function computeSelfLoopPath(center: Position, radius: number): Transitio
     `L ${end.x} ${end.y}`,
   ].join(" ");
 
+  const labelDistance = radius + SELF_LOOP_RADIUS * 2 + 8;
   const labelPosition = {
-    x: center.x,
-    y: center.y - radius - SELF_LOOP_RADIUS * 2 - 8,
+    x: center.x + labelDistance * Math.cos(sectorAngle),
+    y: center.y + labelDistance * Math.sin(sectorAngle),
   };
 
   return { path, labelPosition, labelAngle: 0 };
@@ -167,17 +184,19 @@ export function computeSelfLoopPath(center: Position, radius: number): Transitio
  * Endpoints are placed on the circle boundaries, not at the centers.
  * @param source - Center position of the source state.
  * @param target - Center position of the target state.
- * @param radius - Radius of the state circles (assumed equal).
+ * @param sourceRadius - Radius of the source state circle.
+ * @param targetRadius - Radius of the target state circle.
  */
 export function computeStraightPath(
   source: Position,
   target: Position,
-  radius: number,
+  sourceRadius: number,
+  targetRadius: number = sourceRadius,
 ): TransitionPath {
   const dir = subtract(target, source);
-  const start = circlePoint(source, radius, dir);
+  const start = circlePoint(source, sourceRadius, dir);
   const negDir = scale(dir, -1);
-  const end = circlePoint(target, radius, negDir);
+  const end = circlePoint(target, targetRadius, negDir);
 
   const path = `M ${start.x} ${start.y} L ${end.x} ${end.y}`;
 
@@ -195,16 +214,18 @@ export function computeStraightPath(
  * Used for bidirectional edges so opposing arrows don't overlap.
  * @param source - Center position of the source state.
  * @param target - Center position of the target state.
- * @param radius - Radius of the state circles.
+ * @param sourceRadius - Radius of the source state circle.
  * @param curveDirection - Which side to curve toward: 1 or -1.
  * @param magnitude - Multiplier for the curve offset (default 1).
+ * @param targetRadius - Radius of the target state circle (defaults to sourceRadius).
  */
 export function computeCurvedPath(
   source: Position,
   target: Position,
-  radius: number,
+  sourceRadius: number,
   curveDirection: 1 | -1,
   magnitude: number = 1,
+  targetRadius: number = sourceRadius,
 ): TransitionPath {
   const dir = normalize(subtract(target, source));
   const perp = perpendicular(dir);
@@ -214,10 +235,10 @@ export function computeCurvedPath(
 
   // Direction from source/target toward control point for circle boundary intersection
   const startDir = normalize(subtract(controlPoint, source));
-  const start = circlePoint(source, radius, startDir);
+  const start = circlePoint(source, sourceRadius, startDir);
 
   const endDir = normalize(subtract(controlPoint, target));
-  const end = circlePoint(target, radius, endDir);
+  const end = circlePoint(target, targetRadius, endDir);
 
   const path = `M ${start.x} ${start.y} Q ${controlPoint.x} ${controlPoint.y} ${end.x} ${end.y}`;
 
