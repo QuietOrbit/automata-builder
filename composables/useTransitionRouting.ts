@@ -6,8 +6,8 @@ import {
   computeStraightPath,
   computeCurvedPath,
   type TransitionPath,
-} from "~/utils/geometry";
-import { computeRouting, SECTOR_ANGLES } from "~/utils/routing";
+} from "~/utils/canvas/geometry";
+import { computeRouting, SECTOR_ANGLES } from "~/utils/canvas/routing";
 
 /**
  * Composable that computes SVG arrow geometry for transitions.

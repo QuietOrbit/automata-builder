@@ -11,7 +11,7 @@ import {
 import { createId } from "~/utils/ids";
 import { computeLayout } from "~/utils/layout";
 import type { LayoutTransition, LayoutSpacing } from "~/utils/layout";
-import { buildVisualInfosFromTuple, estimateNameLabelWidth, resolveCollisions } from "~/utils/collision";
+import { buildVisualInfosFromTuple, estimateNameLabelWidth, resolveCollisions } from "~/utils/canvas/collision";
 import { useViewportStore } from "~/stores/viewport";
 
 /**

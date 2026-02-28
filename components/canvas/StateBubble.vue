@@ -142,7 +142,7 @@
 
 <script setup lang="ts">
 import type { AutomatonState, Position } from "~/types/automaton";
-import { STATE_RADIUS } from "~/utils/geometry";
+import { STATE_RADIUS } from "~/utils/canvas/geometry";
 import { useAutomatonStore } from "~/stores/automaton";
 import { useSelectionStore } from "~/stores/selection";
 import { getBubbleOffset, setBubbleOffset } from "~/composables/useBubbleOffsets";

@@ -13,6 +13,7 @@
  */
 
 import type { Position } from "~/types/automaton";
+import { buildEdgeList, initCirclePositions, runSimulation } from "./force-simulation";
 
 /** Directed edge described by indices into the state array. */
 export interface LayoutTransition {
@@ -175,13 +176,11 @@ function buildReverseAdjacency(adjacency: Set<number>[]): Set<number>[] {
  * adjacent layer. Returns `Infinity` for nodes with no connections to the
  * reference layer, so they sort to the end.
  *
- * @param node       - The node to compute the barycenter for.
  * @param neighbours - Adjacency set (predecessors or successors).
  * @param layerIndex - Map from node index to its position within its layer.
  * @returns The average position of connected nodes in the reference layer.
  */
 function barycenter(
-  node: number,
   neighbours: Set<number>,
   layerIndex: Map<number, number>,
 ): number {
@@ -239,7 +238,7 @@ function minimizeCrossings(
     for (let L = 1; L < layerGroups.length; L++) {
       const prevIndex = buildLayerIndex(layerGroups[L - 1]);
       layerGroups[L].sort((a, b) =>
-        barycenter(a, reverse[a], prevIndex) - barycenter(b, reverse[b], prevIndex),
+        barycenter(reverse[a], prevIndex) - barycenter(reverse[b], prevIndex),
       );
     }
 
@@ -247,7 +246,7 @@ function minimizeCrossings(
     for (let L = layerGroups.length - 2; L >= 0; L--) {
       const nextIndex = buildLayerIndex(layerGroups[L + 1]);
       layerGroups[L].sort((a, b) =>
-        barycenter(a, adjacency[a], nextIndex) - barycenter(b, adjacency[b], nextIndex),
+        barycenter(adjacency[a], nextIndex) - barycenter(adjacency[b], nextIndex),
       );
     }
   }
@@ -365,6 +364,200 @@ function buildAdjacency(
     adjacency[sourceIndex].add(targetIndex);
   }
   return adjacency;
+}
+
+// ─── Dominant Path Detection ────────────────────────────────────────
+
+/** Minimum fraction of reachable states that a path must cover to qualify as dominant. */
+const DOMINANT_PATH_THRESHOLD = 0.75;
+
+/**
+ * Find the longest simple path from the start state using DFS with backtracking.
+ *
+ * Returns the path as an array of state indices if it covers at least 75% of
+ * reachable states, or `null` otherwise. For small automata (<50 states),
+ * exhaustive DFS is fast enough. A pruning check skips branches that cannot
+ * beat the current best.
+ *
+ * @param start          - Index of the start state.
+ * @param adjacency      - Directed adjacency list.
+ * @param reachableCount - Number of reachable states (for threshold check).
+ * @returns The longest path as state indices, or `null` if below threshold.
+ */
+export function findDominantPath(
+  start: number,
+  adjacency: Set<number>[],
+  reachableCount: number,
+): number[] | null {
+  let bestPath: number[] = [];
+
+  function dfs(current: number, path: number[], visited: Set<number>): void {
+    if (path.length > bestPath.length) {
+      bestPath = [...path];
+    }
+    // Early exit if we've covered all reachable states
+    if (bestPath.length === reachableCount) return;
+
+    for (const neighbor of adjacency[current]) {
+      if (visited.has(neighbor)) continue;
+      // Prune: remaining unvisited + current length can't beat best
+      const remaining = reachableCount - visited.size;
+      if (path.length + remaining <= bestPath.length) continue;
+
+      visited.add(neighbor);
+      path.push(neighbor);
+      dfs(neighbor, path, visited);
+      path.pop();
+      visited.delete(neighbor);
+
+      if (bestPath.length === reachableCount) return;
+    }
+  }
+
+  const visited = new Set([start]);
+  dfs(start, [start], visited);
+
+  return bestPath.length / reachableCount >= DOMINANT_PATH_THRESHOLD ? bestPath : null;
+}
+
+// ─── Chain With Off-Path ────────────────────────────────────────────
+
+/**
+ * Count the number of directed edges between two states (in both directions).
+ *
+ * @param a         - First state index.
+ * @param b         - Second state index.
+ * @param adjacency - Directed adjacency list.
+ * @returns Total edge count (0, 1, or 2).
+ */
+function countConnections(a: number, b: number, adjacency: Set<number>[]): number {
+  let count = 0;
+  if (adjacency[a].has(b)) count++;
+  if (adjacency[b].has(a)) count++;
+  return count;
+}
+
+/**
+ * Find the path state that an off-path state is most connected to.
+ *
+ * @param offPathState - Index of the off-path state.
+ * @param path         - State indices forming the chain backbone.
+ * @param adjacency    - Directed adjacency list.
+ * @returns Index of the best path neighbor within the path array (position, not state index).
+ */
+function findBestPathNeighbor(
+  offPathState: number,
+  path: number[],
+  adjacency: Set<number>[],
+): number {
+  let bestPos = 0;
+  let bestCount = -1;
+  for (let i = 0; i < path.length; i++) {
+    const c = countConnections(offPathState, path[i], adjacency);
+    if (c > bestCount) {
+      bestCount = c;
+      bestPos = i;
+    }
+  }
+  return bestPos;
+}
+
+/**
+ * Lay out states along a horizontal chain with off-path states positioned
+ * above or below near their most-connected path neighbor.
+ *
+ * Path states are placed on `y = 0`, evenly spaced horizontally, centered
+ * around `x = 0`. Off-path states are placed at `±vSpacing` near their
+ * best path neighbor, offset horizontally if multiple share the same neighbor.
+ *
+ * @param path      - State indices forming the chain backbone (left to right).
+ * @param offPath   - State indices not on the main path.
+ * @param adjacency - Directed adjacency list.
+ * @param hSpacing  - Horizontal distance between chain states.
+ * @param vSpacing  - Vertical offset for off-path states.
+ * @param out       - Position array to write into (mutated in place).
+ */
+export function layoutChainWithOffPath(
+  path: number[],
+  offPath: number[],
+  adjacency: Set<number>[],
+  hSpacing: number,
+  vSpacing: number,
+  out: Position[],
+): void {
+  // Place path states on y=0, centered around x=0
+  const totalWidth = (path.length - 1) * hSpacing;
+  const offsetX = -totalWidth / 2;
+  for (let i = 0; i < path.length; i++) {
+    out[path[i]] = { x: Math.round(offsetX + i * hSpacing), y: 0 };
+  }
+
+  // Group off-path states by their best path neighbor position
+  const groupedByNeighbor = new Map<number, number[]>();
+  for (const state of offPath) {
+    const neighborPos = findBestPathNeighbor(state, path, adjacency);
+    const group = groupedByNeighbor.get(neighborPos);
+    if (group) {
+      group.push(state);
+    }
+    else {
+      groupedByNeighbor.set(neighborPos, [state]);
+    }
+  }
+
+  // Place off-path states above/below the chain
+  for (const [neighborPos, states] of groupedByNeighbor) {
+    const baseX = Math.round(offsetX + neighborPos * hSpacing);
+    for (let i = 0; i < states.length; i++) {
+      // Alternate above (-) and below (+), offset horizontally for multiple
+      const ySign = i % 2 === 0 ? -1 : 1;
+      const xOffset = Math.floor(i / 2) * Math.round(hSpacing / 2);
+      out[states[i]] = {
+        x: baseX + xOffset,
+        y: Math.round(ySign * vSpacing),
+      };
+    }
+  }
+}
+
+// ─── Force-Directed Layout ─────────────────────────────────────────
+
+/**
+ * Position states using Fruchterman-Reingold force-directed simulation.
+ *
+ * Delegates to the generic simulation engine in `force-simulation.ts`.
+ * Computes the ideal distance from the state count and spacing, initializes
+ * positions on a circle, runs the simulation, and writes results to the
+ * output array.
+ *
+ * @param reachable - Indices of reachable states to position.
+ * @param adjacency - Directed adjacency list.
+ * @param hSpacing  - Target spacing between connected states.
+ * @param out       - Position array to write into (mutated in place).
+ */
+export function layoutForceDirected(
+  reachable: number[],
+  adjacency: Set<number>[],
+  hSpacing: number,
+  out: Position[],
+): void {
+  const n = reachable.length;
+
+  if (n <= 1) {
+    for (const i of reachable) out[i] = { x: 0, y: 0 };
+    return;
+  }
+
+  const area = (n * hSpacing) * (n * hSpacing);
+  const k = Math.sqrt(area / n);
+
+  const state = initCirclePositions(reachable, k, adjacency.length);
+  const edges = buildEdgeList(reachable, adjacency);
+  runSimulation(state, reachable, edges, k);
+
+  for (const i of reachable) {
+    out[i] = { x: state.posX[i], y: state.posY[i] };
+  }
 }
 
 // ─── Orchestration ──────────────────────────────────────────────────

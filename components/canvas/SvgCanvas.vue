@@ -150,7 +150,7 @@ import { useSelectionStore } from "~/stores/selection";
 import { useViewportStore } from "~/stores/viewport";
 import { useCanvasInteraction } from "~/composables/useCanvasInteraction";
 import { useDragState } from "~/composables/useDragState";
-import { buildVisualInfosFromStore } from "~/utils/collision";
+import { buildVisualInfosFromStore } from "~/utils/canvas/collision";
 
 const automaton = useAutomatonStore();
 const selection = useSelectionStore();

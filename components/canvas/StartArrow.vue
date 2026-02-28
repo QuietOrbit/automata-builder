@@ -12,7 +12,7 @@
 
 <script setup lang="ts">
 import type { AutomatonState } from "~/types/automaton";
-import { connectionRadius, computeStartArrowPath } from "~/utils/geometry";
+import { connectionRadius, computeStartArrowPath } from "~/utils/canvas/geometry";
 
 const props = defineProps<{
   state: AutomatonState;
