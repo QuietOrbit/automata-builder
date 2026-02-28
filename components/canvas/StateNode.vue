@@ -44,7 +44,7 @@
 <script setup lang="ts">
 import type { AutomatonState } from "~/types/automaton";
 import { SimulationStatus } from "~/types/automaton";
-import { STATE_RADIUS } from "~/utils/geometry";
+import { STATE_RADIUS } from "~/utils/canvas/geometry";
 import { useSelectionStore } from "~/stores/selection";
 import { useSimulationStore } from "~/stores/simulation";
 import { useHoverStore } from "~/stores/hover";

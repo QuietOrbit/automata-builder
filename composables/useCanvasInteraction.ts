@@ -1,7 +1,7 @@
 import { reactive, computed, type Ref } from "vue";
 import type { Position } from "~/types/automaton";
-import type { StateVisualInfo } from "~/utils/collision";
-import { computeStateBounds } from "~/utils/collision";
+import type { StateVisualInfo } from "~/utils/canvas/collision";
+import { computeStateBounds } from "~/utils/canvas/collision";
 
 /** Minimum zoom level (fully zoomed out). */
 export const MIN_ZOOM = 0.2;

@@ -190,7 +190,7 @@ import { useViewportStore } from "~/stores/viewport";
 import { AutomatonType, EPSILON } from "~/types/automaton";
 import { computeLayout } from "~/utils/layout";
 import type { LayoutTransition } from "~/utils/layout";
-import { buildVisualInfosFromStore, estimateNameLabelWidth, resolveCollisions } from "~/utils/collision";
+import { buildVisualInfosFromStore, estimateNameLabelWidth, resolveCollisions } from "~/utils/canvas/collision";
 
 const automaton = useAutomatonStore();
 const hoverStore = useHoverStore();

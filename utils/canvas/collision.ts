@@ -11,8 +11,8 @@ import {
   STATE_RADIUS,
   SELF_LOOP_RADIUS,
   START_ARROW_LENGTH,
-} from "~/utils/geometry";
-import { SECTOR_ANGLES } from "~/utils/routing";
+} from "~/utils/canvas/geometry";
+import { SECTOR_ANGLES } from "~/utils/canvas/routing";
 
 /** Axis-aligned bounding box. */
 export interface AABB {
