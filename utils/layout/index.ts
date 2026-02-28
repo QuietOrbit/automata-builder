@@ -3,11 +3,15 @@
  *
  * All state references use numeric indices into the caller's state array.
  *
- * Analyses the graph structure via BFS from the start state, classifies the
- * shape as **chain**, **layered**, or **dense**, and returns positions tuned
- * to that shape. For layered layouts, applies barycenter crossing minimization
- * to reduce visual clutter. Unreachable states are placed in a row beneath
- * the main layout.
+ * Two layout strategies, selected by graph structure:
+ * - **Dominant-path chain:** For machines with a clear forward backbone
+ *   (≥75% of states on longest path from start). Draws states horizontally
+ *   with off-path states above/below their most-connected neighbor.
+ * - **Force-directed (Fruchterman-Reingold):** For everything else. Physics
+ *   simulation where states repel each other and edges attract connected
+ *   states, naturally discovering grid-like, circular, or organic arrangements.
+ *
+ * Unreachable states are placed in a row beneath the main layout.
  *
  * @module layout
  */
@@ -29,10 +33,7 @@ export interface LayoutSpacing {
   vSpacing?: number;
 }
 
-/** The three recognised graph shapes. */
-type LayoutKind = "chain" | "layered" | "dense";
-
-// ─── BFS & Classification ───────────────────────────────────────────
+// ─── BFS ────────────────────────────────────────────────────────────
 
 /**
  * Run a breadth-first search from {@link start} over the directed graph
@@ -71,275 +72,6 @@ function bfs(
   return depths;
 }
 
-/**
- * Group reachable state indices by their BFS depth, preserving BFS visit
- * order within each group.
- *
- * @param depths - Array mapping state index to BFS depth (`-1` = unreachable).
- * @returns An array of arrays, where index `i` holds the state indices at depth `i`.
- *
- * @example
- * ```ts
- * groupByLayer(Int32Array.from([0, 1, 1, 2]));
- * // [[0], [1, 2], [3]]
- * ```
- */
-function groupByLayer(depths: Int32Array): number[][] {
-  const groups: number[][] = [];
-  for (let i = 0; i < depths.length; i++) {
-    const depth = depths[i];
-    if (depth === -1) continue;
-    while (groups.length <= depth) groups.push([]);
-    groups[depth].push(i);
-  }
-  return groups;
-}
-
-/**
- * Compute the ratio of non-forward edges (back-edges, same-layer edges,
- * skip-edges) to total non-self-loop edges among reachable states.
- *
- * A forward edge goes from depth `d` to depth `d + 1`. Anything else
- * (same layer, backward, or skipping layers) is non-forward and creates
- * visual clutter in a layered layout.
- *
- * @param transitions - Directed edges by index.
- * @param depths      - BFS depth array (`-1` = unreachable).
- * @returns Ratio in `[0, 1]`. Returns `0` when there are no qualifying edges.
- */
-function computeBackEdgeRatio(
-  transitions: LayoutTransition[],
-  depths: Int32Array,
-): number {
-  let nonForward = 0;
-  let total = 0;
-  for (const { sourceIndex, targetIndex } of transitions) {
-    if (sourceIndex === targetIndex) continue;
-    if (depths[sourceIndex] === -1 || depths[targetIndex] === -1) continue;
-    total++;
-    if (depths[targetIndex] - depths[sourceIndex] !== 1) nonForward++;
-  }
-  return total > 0 ? nonForward / total : 0;
-}
-
-/**
- * Classify the graph shape based on BFS layer structure and edge direction.
- *
- * - **chain** — every BFS layer has exactly 1 state and all edges are
- *   forward (depth +1). No back-edges or layer-skipping edges.
- * - **layered** — multiple BFS layers with moderate width (≤3 states per
- *   layer) and a low proportion of non-forward edges (< 35%).
- * - **dense** — any of: single BFS layer with > 2 states; chain with
- *   back-edges; layers with ≥ 4 states; or ≥ 35% non-forward edges
- *   (indicating heavy cyclicity where a circular layout is cleaner).
- *
- * @param layerGroups    - Reachable states grouped by BFS depth.
- * @param totalStates    - Total number of states (reachable + unreachable).
- * @param backEdgeRatio  - Ratio of non-forward edges to total non-self-loop
- *                         edges (from {@link computeBackEdgeRatio}).
- * @returns The detected layout kind.
- */
-function classify(
-  layerGroups: number[][],
-  totalStates: number,
-  backEdgeRatio: number,
-): LayoutKind {
-  if (layerGroups.length <= 1 && totalStates > 2) return "dense";
-
-  const maxWidth = Math.max(...layerGroups.map(g => g.length));
-  if (maxWidth === 1 && backEdgeRatio === 0) return "chain";
-  if (maxWidth === 1) return "dense";
-  if (backEdgeRatio >= 0.35 || maxWidth >= 4) return "dense";
-  return "layered";
-}
-
-// ─── Crossing Minimization ──────────────────────────────────────────
-
-/**
- * Build a reverse adjacency list (predecessor map) from a forward adjacency.
- *
- * @param adjacency - Forward adjacency list.
- * @returns Reverse adjacency where `result[i]` contains all predecessors of state `i`.
- */
-function buildReverseAdjacency(adjacency: Set<number>[]): Set<number>[] {
-  const reverse: Set<number>[] = Array.from({ length: adjacency.length }, () => new Set());
-  for (let i = 0; i < adjacency.length; i++) {
-    for (const j of adjacency[i]) {
-      reverse[j].add(i);
-    }
-  }
-  return reverse;
-}
-
-/**
- * Compute the barycenter (average position) of a node's neighbours in an
- * adjacent layer. Returns `Infinity` for nodes with no connections to the
- * reference layer, so they sort to the end.
- *
- * @param neighbours - Adjacency set (predecessors or successors).
- * @param layerIndex - Map from node index to its position within its layer.
- * @returns The average position of connected nodes in the reference layer.
- */
-function barycenter(
-  neighbours: Set<number>,
-  layerIndex: Map<number, number>,
-): number {
-  let sum = 0;
-  let count = 0;
-  for (const n of neighbours) {
-    const pos = layerIndex.get(n);
-    if (pos !== undefined) {
-      sum += pos;
-      count++;
-    }
-  }
-  return count > 0 ? sum / count : Infinity;
-}
-
-/**
- * Build a lookup map from node index to its position within its layer.
- *
- * @param layer - Array of node indices in a single layer.
- * @returns Map from node index to position (0-based).
- */
-function buildLayerIndex(layer: number[]): Map<number, number> {
-  const index = new Map<number, number>();
-  for (let i = 0; i < layer.length; i++) {
-    index.set(layer[i], i);
-  }
-  return index;
-}
-
-/**
- * Reorder nodes within each layer to minimize edge crossings using the
- * barycenter heuristic (Sugiyama framework).
- *
- * Performs alternating forward and backward sweeps. On each sweep, nodes in
- * a layer are sorted by the average position of their connections in the
- * adjacent (already-ordered) layer.
- *
- * Mutates `layerGroups` in place.
- *
- * @param layerGroups - Layer groups to reorder (mutated).
- * @param adjacency   - Forward adjacency list.
- * @param sweeps      - Number of forward+backward sweep pairs.
- */
-function minimizeCrossings(
-  layerGroups: number[][],
-  adjacency: Set<number>[],
-  sweeps: number = 4,
-): void {
-  if (layerGroups.length < 2) return;
-
-  const reverse = buildReverseAdjacency(adjacency);
-
-  for (let sweep = 0; sweep < sweeps; sweep++) {
-    // Forward pass: sort each layer by predecessor barycenters
-    for (let L = 1; L < layerGroups.length; L++) {
-      const prevIndex = buildLayerIndex(layerGroups[L - 1]);
-      layerGroups[L].sort((a, b) =>
-        barycenter(reverse[a], prevIndex) - barycenter(reverse[b], prevIndex),
-      );
-    }
-
-    // Backward pass: sort each layer by successor barycenters
-    for (let L = layerGroups.length - 2; L >= 0; L--) {
-      const nextIndex = buildLayerIndex(layerGroups[L + 1]);
-      layerGroups[L].sort((a, b) =>
-        barycenter(adjacency[a], nextIndex) - barycenter(adjacency[b], nextIndex),
-      );
-    }
-  }
-}
-
-// ─── Layout Strategies ──────────────────────────────────────────────
-
-/**
- * Lay states out left-to-right along `y = 0`, centred around `x = 0`.
- *
- * @param layerGroups - Each group must contain exactly 1 state index (chain shape).
- * @param spacing     - Horizontal distance between consecutive states.
- * @param out         - Position array to write into (mutated in place).
- */
-function layoutChain(
-  layerGroups: number[][],
-  spacing: number,
-  out: Position[],
-): void {
-  const count = layerGroups.length;
-  const totalWidth = (count - 1) * spacing;
-  const offsetX = -totalWidth / 2;
-
-  for (let i = 0; i < count; i++) {
-    out[layerGroups[i][0]] = {
-      x: Math.round(offsetX + i * spacing),
-      y: 0,
-    };
-  }
-}
-
-/**
- * Lay states out in columns by BFS depth, centred around the origin.
- *
- * Columns are spaced {@link hSpacing} apart horizontally; states within a
- * column are spaced {@link vSpacing} apart vertically and centred around
- * `y = 0`.
- *
- * @param layerGroups - State indices grouped by BFS depth.
- * @param hSpacing    - Horizontal distance between columns.
- * @param vSpacing    - Vertical distance between states in the same column.
- * @param out         - Position array to write into (mutated in place).
- */
-function layoutLayered(
-  layerGroups: number[][],
-  hSpacing: number,
-  vSpacing: number,
-  out: Position[],
-): void {
-  const cols = layerGroups.length;
-  const totalWidth = (cols - 1) * hSpacing;
-  const offsetX = -totalWidth / 2;
-
-  for (let col = 0; col < cols; col++) {
-    const group = layerGroups[col];
-    const totalHeight = (group.length - 1) * vSpacing;
-    const offsetY = -totalHeight / 2;
-
-    for (let row = 0; row < group.length; row++) {
-      out[group[row]] = {
-        x: Math.round(offsetX + col * hSpacing),
-        y: Math.round(offsetY + row * vSpacing),
-      };
-    }
-  }
-}
-
-/**
- * Lay states out evenly around a circle, ordered by BFS traversal so that
- * graph-neighbours tend to sit adjacent on the circle.
- *
- * @param orderedIndices - State indices in BFS visit order.
- * @param minStateWidth  - Minimum pixel width of a single state (for spacing).
- * @param out            - Position array to write into (mutated in place).
- */
-function layoutCircle(
-  orderedIndices: number[],
-  minStateWidth: number,
-  out: Position[],
-): void {
-  const count = orderedIndices.length;
-  const circumferenceNeeded = count * (minStateWidth + 40);
-  const radius = Math.max(150, circumferenceNeeded / (2 * Math.PI));
-
-  for (let i = 0; i < count; i++) {
-    const angle = -Math.PI / 2 + (2 * Math.PI * i) / count;
-    out[orderedIndices[i]] = {
-      x: Math.round(radius * Math.cos(angle)),
-      y: Math.round(radius * Math.sin(angle)),
-    };
-  }
-}
-
 // ─── Graph Construction ─────────────────────────────────────────────
 
 /**
@@ -369,7 +101,7 @@ function buildAdjacency(
 // ─── Dominant Path Detection ────────────────────────────────────────
 
 /** Minimum fraction of reachable states that a path must cover to qualify as dominant. */
-const DOMINANT_PATH_THRESHOLD = 0.75;
+const DOMINANT_PATH_THRESHOLD = 0.6;
 
 /**
  * Find the longest simple path from the start state using DFS with backtracking.
@@ -418,6 +150,58 @@ export function findDominantPath(
   dfs(start, [start], visited);
 
   return bestPath.length / reachableCount >= DOMINANT_PATH_THRESHOLD ? bestPath : null;
+}
+
+/**
+ * Maximum cross-path edges per path node before rejecting chain layout.
+ *
+ * Cross-path edges connect path nodes that are not adjacent on the path
+ * (distance > 1). Graphs like grids or cliques have many of these, making
+ * a linear layout misleading. Back-edges to adjacent path neighbors are
+ * fine — they're natural in chains with cycles.
+ */
+const MAX_CROSS_EDGES_PER_NODE = 0.5;
+
+/**
+ * Check whether the dominant path captures the graph's edge structure well
+ * enough for a chain layout.
+ *
+ * Counts edges between path nodes that skip over adjacent positions on the
+ * path. For example, in path [0,1,2,3], edge 0→3 has distance 3, which is
+ * a cross-path edge. Edge 2→0 (back-edge, distance 2) is also cross-path.
+ * Only edge 0→1 or 2→1 (distance 1) are path-adjacent.
+ *
+ * If the ratio of cross-path edges to path length exceeds the threshold,
+ * the graph is too densely connected for a chain layout.
+ *
+ * @param path      - The dominant path (state indices in order).
+ * @param adjacency - Directed adjacency list.
+ * @returns `true` if the graph is chain-like enough for linear layout.
+ */
+export function isChainLike(
+  path: number[],
+  adjacency: Set<number>[],
+): boolean {
+  if (path.length <= 2) return true;
+
+  // Map each state to its position on the path
+  const posOnPath = new Map<number, number>();
+  for (let i = 0; i < path.length; i++) {
+    posOnPath.set(path[i], i);
+  }
+
+  // Count edges between path nodes that skip over adjacent positions
+  let crossEdges = 0;
+  for (const src of path) {
+    const srcPos = posOnPath.get(src)!;
+    for (const tgt of adjacency[src]) {
+      const tgtPos = posOnPath.get(tgt);
+      if (tgtPos === undefined || src === tgt) continue;
+      if (Math.abs(srcPos - tgtPos) > 1) crossEdges++;
+    }
+  }
+
+  return crossEdges / path.length < MAX_CROSS_EDGES_PER_NODE;
 }
 
 // ─── Chain With Off-Path ────────────────────────────────────────────
@@ -560,38 +344,120 @@ export function layoutForceDirected(
   }
 }
 
-// ─── Orchestration ──────────────────────────────────────────────────
+// ─── Post-Processing ────────────────────────────────────────────────
 
 /**
- * Position reachable states according to the classified graph shape.
+ * Rotate all positions so the start state becomes the leftmost node.
  *
- * @param kind          - The detected layout shape.
- * @param layerGroups   - Reachable state indices grouped by BFS depth.
- * @param hSpacing      - Horizontal distance between columns/states.
- * @param vSpacing      - Vertical distance between states in the same column.
- * @param minStateWidth - Minimum pixel width of a single state (for circle radius).
- * @param out           - Position array to write into (mutated in place).
+ * Computes the angle from the centroid to the start state, then rotates
+ * all positions so that vector points left (π radians). This follows the
+ * textbook convention of the start state on the left with an incoming arrow.
+ *
+ * Mutates `positions` in place.
+ *
+ * @param positions  - Position array to rotate (mutated).
+ * @param reachable  - Indices of reachable states.
+ * @param startIndex - Index of the start state.
  */
-function layoutReachable(
-  kind: LayoutKind,
-  layerGroups: number[][],
-  hSpacing: number,
-  vSpacing: number,
-  minStateWidth: number,
-  out: Position[],
+export function rotateStartLeft(
+  positions: Position[],
+  reachable: number[],
+  startIndex: number,
 ): void {
-  switch (kind) {
-    case "chain":
-      layoutChain(layerGroups, hSpacing, out);
-      break;
-    case "layered":
-      layoutLayered(layerGroups, hSpacing, vSpacing, out);
-      break;
-    case "dense":
-      layoutCircle(layerGroups.flat(), minStateWidth, out);
-      break;
+  if (reachable.length <= 1) return;
+
+  // Compute centroid of reachable states
+  let cx = 0;
+  let cy = 0;
+  for (const i of reachable) {
+    cx += positions[i].x;
+    cy += positions[i].y;
+  }
+  cx /= reachable.length;
+  cy /= reachable.length;
+
+  // Angle from centroid to start state
+  const dx = positions[startIndex].x - cx;
+  const dy = positions[startIndex].y - cy;
+  const currentAngle = Math.atan2(dy, dx);
+
+  // Rotate so that angle becomes π (leftmost)
+  const rotation = Math.PI - currentAngle;
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+
+  for (const i of reachable) {
+    const rx = positions[i].x - cx;
+    const ry = positions[i].y - cy;
+    positions[i].x = cx + rx * cos - ry * sin;
+    positions[i].y = cy + rx * sin + ry * cos;
   }
 }
+
+/**
+ * Uniformly scale all positions so the average edge length matches the target.
+ *
+ * Computes the current average edge length among reachable states, then scales
+ * all positions around the centroid to hit the target spacing. Preserves the
+ * topology the simulation found — just normalizes density.
+ *
+ * Mutates `positions` in place. No-op if there are no edges between reachable states.
+ *
+ * @param positions     - Position array to scale (mutated).
+ * @param reachable     - Indices of reachable states.
+ * @param adjacency     - Directed adjacency list.
+ * @param targetSpacing - Desired average edge length in pixels.
+ */
+export function scaleToTargetSpacing(
+  positions: Position[],
+  reachable: number[],
+  adjacency: Set<number>[],
+  targetSpacing: number,
+): void {
+  const reachableSet = new Set(reachable);
+  let totalLength = 0;
+  let edgeCount = 0;
+
+  // Compute average edge length (deduplicated)
+  const seen = new Set<string>();
+  for (const a of reachable) {
+    for (const b of adjacency[a]) {
+      if (!reachableSet.has(b) || a === b) continue;
+      const key = Math.min(a, b) + "," + Math.max(a, b);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      totalLength += Math.hypot(
+        positions[a].x - positions[b].x,
+        positions[a].y - positions[b].y,
+      );
+      edgeCount++;
+    }
+  }
+
+  if (edgeCount === 0) return;
+
+  const avgLength = totalLength / edgeCount;
+  if (avgLength < 0.1) return;
+
+  const scaleFactor = targetSpacing / avgLength;
+
+  // Scale around centroid
+  let cx = 0;
+  let cy = 0;
+  for (const i of reachable) {
+    cx += positions[i].x;
+    cy += positions[i].y;
+  }
+  cx /= reachable.length;
+  cy /= reachable.length;
+
+  for (const i of reachable) {
+    positions[i].x = cx + (positions[i].x - cx) * scaleFactor;
+    positions[i].y = cy + (positions[i].y - cy) * scaleFactor;
+  }
+}
+
+// ─── Orchestration ──────────────────────────────────────────────────
 
 /**
  * Place unreachable states in a horizontal row below the main layout.
@@ -627,39 +493,11 @@ function layoutUnreachable(
   }
 }
 
-/**
- * Compute dynamic spacing based on the graph's layer structure.
- *
- * Wider layers (more states in a column) get more vertical breathing room.
- * More layers get more horizontal spacing.
- *
- * @param layerGroups - Reachable states grouped by BFS depth.
- * @param baseH       - Base horizontal spacing.
- * @param baseV       - Base vertical spacing.
- * @returns Adjusted horizontal and vertical spacing.
- */
-function computeDynamicSpacing(
-  layerGroups: number[][],
-  baseH: number,
-  baseV: number,
-): { hSpacing: number; vSpacing: number } {
-  const maxWidth = Math.max(...layerGroups.map(g => g.length));
-  const layerCount = layerGroups.length;
-
-  const hSpacing = baseH + Math.max(0, layerCount - 3) * 20;
-  const vSpacing = baseV + Math.max(0, maxWidth - 2) * 25;
-
-  return { hSpacing, vSpacing };
-}
-
 /** Default horizontal spacing between columns/states. */
 const DEFAULT_H_SPACING = 150;
 
 /** Default vertical spacing between states in the same column. */
 const DEFAULT_V_SPACING = 120;
-
-/** Default minimum state width for circle layout radius calculation. */
-const DEFAULT_MIN_STATE_WIDTH = 70;
 
 /**
  * Compute positions for a set of automaton states using a hybrid layout
@@ -667,12 +505,12 @@ const DEFAULT_MIN_STATE_WIDTH = 70;
  *
  * The algorithm:
  * 1. Builds a directed adjacency list from the transitions.
- * 2. Runs BFS from the start state to assign each reachable state a layer.
- * 3. Classifies the graph as **chain**, **layered**, or **dense**.
- * 4. For layered layouts, applies barycenter crossing minimization.
- * 5. Computes dynamic spacing based on layer structure.
- * 6. Positions reachable states using the appropriate strategy.
- * 7. Places unreachable states in a horizontal row below the main layout.
+ * 2. Runs BFS from the start state to separate reachable vs unreachable states.
+ * 3. Finds the dominant path (longest simple path from start via DFS).
+ * 4. If the path covers ≥75% of reachable states → chain layout with off-path states.
+ * 5. Otherwise → Fruchterman-Reingold force-directed simulation, then rotate
+ *    start-left, scale to target spacing, and round to integers.
+ * 6. Places unreachable states in a horizontal row below the main layout.
  *
  * @param stateCount   - Total number of states (indices `0 .. stateCount-1`).
  * @param startIndex   - Index of the start state (root for BFS).
@@ -704,27 +542,46 @@ export function computeLayout(
 
   const adjacency = buildAdjacency(stateCount, transitions);
   const depths = bfs(startIndex, adjacency);
-  const layerGroups = groupByLayer(depths);
-  const kind = classify(layerGroups, stateCount, computeBackEdgeRatio(transitions, depths));
 
-  // Crossing minimization (only affects layered layouts)
-  if (kind === "layered") {
-    minimizeCrossings(layerGroups, adjacency);
-  }
-
-  // Scale spacing based on layer complexity
-  const { hSpacing, vSpacing } = computeDynamicSpacing(layerGroups, baseH, baseV);
-  const minStateWidth = Math.max(DEFAULT_MIN_STATE_WIDTH, hSpacing - 40);
-
-  const positions: Position[] = new Array(stateCount);
-  layoutReachable(kind, layerGroups, hSpacing, vSpacing, minStateWidth, positions);
-
+  // Separate reachable vs unreachable
+  const reachable: number[] = [];
   const unreachable: number[] = [];
   for (let i = 0; i < stateCount; i++) {
-    if (depths[i] === -1) unreachable.push(i);
+    if (depths[i] === -1) {
+      unreachable.push(i);
+    }
+    else {
+      reachable.push(i);
+    }
   }
+
+  const positions: Position[] = new Array(stateCount);
+
+  if (reachable.length <= 1) {
+    for (const i of reachable) positions[i] = { x: 0, y: 0 };
+  }
+  else {
+    const dominantPath = findDominantPath(startIndex, adjacency, reachable.length);
+
+    if (dominantPath && isChainLike(dominantPath, adjacency)) {
+      const pathSet = new Set(dominantPath);
+      const offPath = reachable.filter(i => !pathSet.has(i));
+      layoutChainWithOffPath(dominantPath, offPath, adjacency, baseH, baseV, positions);
+    }
+    else {
+      layoutForceDirected(reachable, adjacency, baseH, positions);
+      rotateStartLeft(positions, reachable, startIndex);
+      scaleToTargetSpacing(positions, reachable, adjacency, baseH);
+      // Round to integers for clean rendering
+      for (const i of reachable) {
+        positions[i].x = Math.round(positions[i].x);
+        positions[i].y = Math.round(positions[i].y);
+      }
+    }
+  }
+
   if (unreachable.length > 0) {
-    layoutUnreachable(unreachable, positions, depths, hSpacing);
+    layoutUnreachable(unreachable, positions, depths, baseH);
   }
 
   return positions;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeLayout, findDominantPath, layoutChainWithOffPath, layoutForceDirected } from "..";
+import { computeLayout, findDominantPath, isChainLike, layoutChainWithOffPath, layoutForceDirected, rotateStartLeft, scaleToTargetSpacing } from "..";
 import type { LayoutTransition } from "..";
 
 describe("utils/layout", () => {
@@ -40,62 +40,72 @@ describe("utils/layout", () => {
       });
     });
 
-    describe("layered topology", () => {
-      it("lays out states in columns when a layer has multiple states", () => {
-        // 0 → 1, 0 → 2 (layer 0: [0], layer 1: [1, 2])
-        const positions = computeLayout(3, 0, [
-          { sourceIndex: 0, targetIndex: 1 },
-          { sourceIndex: 0, targetIndex: 2 },
-        ]);
-
-        // State 0 should be to the left of states 1 and 2
-        expect(positions[0].x).toBeLessThan(positions[1].x);
-        expect(positions[0].x).toBeLessThan(positions[2].x);
-
-        // States 1 and 2 should be in the same column (same x)
-        expect(positions[1].x).toBe(positions[2].x);
-
-        // States 1 and 2 should be at different y positions
-        expect(positions[1].y).not.toBe(positions[2].y);
-      });
-    });
-
-    describe("dense/circular topology", () => {
-      it("uses circular layout for a fully-connected graph", () => {
-        // All states one hop from start → dense
-        const transitions: LayoutTransition[] = [
-          { sourceIndex: 0, targetIndex: 1 },
-          { sourceIndex: 0, targetIndex: 2 },
-          { sourceIndex: 0, targetIndex: 3 },
-          { sourceIndex: 1, targetIndex: 0 },
-          { sourceIndex: 2, targetIndex: 0 },
-          { sourceIndex: 3, targetIndex: 0 },
-        ];
-        const positions = computeLayout(4, 0, transitions);
-
-        // All states should have positions
-        for (const pos of positions) {
-          expect(pos).toBeDefined();
-          expect(pos.x).toBeDefined();
-          expect(pos.y).toBeDefined();
-        }
-
-        // Not all on the same line (would be chain)
-        const uniqueYs = new Set(positions.map(p => p.y));
-        expect(uniqueYs.size).toBeGreaterThan(1);
-      });
-
-      it("uses circular layout for chain with back-edges", () => {
-        // 0 → 1 → 2 → 0 (cycle — back-edge makes it dense)
+    describe("chain with back-edges", () => {
+      it("uses chain layout for a cycle with dominant forward path", () => {
+        // 0 → 1 → 2, 2 → 0 — path 0→1→2 covers 100%
         const positions = computeLayout(3, 0, [
           { sourceIndex: 0, targetIndex: 1 },
           { sourceIndex: 1, targetIndex: 2 },
           { sourceIndex: 2, targetIndex: 0 },
         ]);
 
-        // Not a straight line — should have varied y values
-        const uniqueYs = new Set(positions.map(p => p.y));
-        expect(uniqueYs.size).toBeGreaterThan(1);
+        // Should be chain: all y=0, left-to-right
+        for (const pos of positions) {
+          expect(pos.y).toBe(0);
+        }
+        expect(positions[0].x).toBeLessThan(positions[1].x);
+        expect(positions[1].x).toBeLessThan(positions[2].x);
+      });
+    });
+
+    describe("force-directed layout", () => {
+      it("lays out a fully-connected graph with non-overlapping positions", () => {
+        const transitions: LayoutTransition[] = [
+          { sourceIndex: 0, targetIndex: 1 },
+          { sourceIndex: 0, targetIndex: 2 },
+          { sourceIndex: 0, targetIndex: 3 },
+          { sourceIndex: 1, targetIndex: 0 },
+          { sourceIndex: 1, targetIndex: 3 },
+          { sourceIndex: 2, targetIndex: 0 },
+          { sourceIndex: 2, targetIndex: 3 },
+          { sourceIndex: 3, targetIndex: 1 },
+          { sourceIndex: 3, targetIndex: 2 },
+        ];
+        const positions = computeLayout(4, 0, transitions);
+
+        for (const pos of positions) {
+          expect(pos).toBeDefined();
+        }
+        // No two states overlap
+        for (let i = 0; i < 4; i++) {
+          for (let j = i + 1; j < 4; j++) {
+            const dist = Math.hypot(
+              positions[i].x - positions[j].x,
+              positions[i].y - positions[j].y,
+            );
+            expect(dist).toBeGreaterThan(20);
+          }
+        }
+      });
+
+      it("produces integer positions for force-directed graphs", () => {
+        // Star graph — no dominant path, triggers force-directed
+        const transitions: LayoutTransition[] = [
+          { sourceIndex: 0, targetIndex: 1 },
+          { sourceIndex: 0, targetIndex: 2 },
+          { sourceIndex: 0, targetIndex: 3 },
+          { sourceIndex: 0, targetIndex: 4 },
+          { sourceIndex: 1, targetIndex: 0 },
+          { sourceIndex: 2, targetIndex: 0 },
+          { sourceIndex: 3, targetIndex: 0 },
+          { sourceIndex: 4, targetIndex: 0 },
+        ];
+        const positions = computeLayout(5, 0, transitions);
+
+        for (const pos of positions) {
+          expect(Number.isInteger(pos.x)).toBe(true);
+          expect(Number.isInteger(pos.y)).toBe(true);
+        }
       });
     });
 
@@ -122,34 +132,6 @@ describe("utils/layout", () => {
 
         // Different x positions
         expect(positions[2].x).not.toBe(positions[3].x);
-      });
-    });
-
-    describe("crossing minimization", () => {
-      it("reorders nodes within layers to reduce crossings", () => {
-        // Graph: 0→1, 0→2, 0→3, 1→5, 3→4
-        // BFS: layer 0=[0], layer 1=[1,2,3], layer 2=[4,5]
-        // Without reorder: edges 1→5 and 3→4 cross (1 at top, 5 at bottom)
-        // After reorder: layer 2 becomes [5,4], no crossing
-        const transitions: LayoutTransition[] = [
-          { sourceIndex: 0, targetIndex: 1 },
-          { sourceIndex: 0, targetIndex: 2 },
-          { sourceIndex: 0, targetIndex: 3 },
-          { sourceIndex: 3, targetIndex: 4 },
-          { sourceIndex: 1, targetIndex: 5 },
-        ];
-        const positions = computeLayout(6, 0, transitions);
-
-        // States 1-3 should be in the same column (layer 1)
-        expect(positions[1].x).toBe(positions[2].x);
-        expect(positions[2].x).toBe(positions[3].x);
-
-        // States 4-5 should be in the same column (layer 2)
-        expect(positions[4].x).toBe(positions[5].x);
-
-        // After crossing minimization, state 5 (connected to state 1 at top)
-        // should be above state 4 (connected to state 3 at bottom)
-        expect(positions[5].y).toBeLessThan(positions[4].y);
       });
     });
 
@@ -192,7 +174,7 @@ describe("utils/layout", () => {
       expect(path!.length).toBeGreaterThanOrEqual(3);
     });
 
-    it("returns null when path covers less than 75%", () => {
+    it("returns null when path covers less than 60%", () => {
       // Star: 0 → 1, 0 → 2, 0 → 3, 0 → 4 (longest path from 0 is 2 states = 40%)
       const adj = [
         new Set([1, 2, 3, 4]),
@@ -231,6 +213,47 @@ describe("utils/layout", () => {
       // K4 has a Hamiltonian path: 0→1→2→3 = 4/4 = 100%, so it WILL find one
       expect(path).not.toBeNull();
       expect(path!.length).toBe(4);
+    });
+  });
+
+  describe("isChainLike", () => {
+    it("returns true for a pure forward chain", () => {
+      // 0 → 1 → 2 → 3 — no cross-path edges
+      const adj = [new Set([1]), new Set([2]), new Set([3]), new Set<number>()];
+      expect(isChainLike([0, 1, 2, 3], adj)).toBe(true);
+    });
+
+    it("returns true for a chain with a single back-edge", () => {
+      // 0 → 1 → 2, 2 → 0 — one cross-edge (distance 2), ratio 1/3 = 0.33
+      const adj = [new Set([1]), new Set([2]), new Set([0])];
+      expect(isChainLike([0, 1, 2], adj)).toBe(true);
+    });
+
+    it("returns false for a 2x2 grid (even 0s and 1s pattern)", () => {
+      // Path [0,1,3,2] but q0↔q2 skip from position 0 to 3
+      const adj = [
+        new Set([1, 2]),
+        new Set([0, 3]),
+        new Set([3, 0]),
+        new Set([2, 1]),
+      ];
+      expect(isChainLike([0, 1, 3, 2], adj)).toBe(false);
+    });
+
+    it("returns false for a complete graph K4", () => {
+      const adj = [
+        new Set([1, 2, 3]),
+        new Set([0, 2, 3]),
+        new Set([0, 1, 3]),
+        new Set([0, 1, 2]),
+      ];
+      // Any Hamiltonian path has many cross-edges
+      expect(isChainLike([0, 1, 2, 3], adj)).toBe(false);
+    });
+
+    it("returns true for 2-node path", () => {
+      const adj = [new Set([1]), new Set([0])];
+      expect(isChainLike([0, 1], adj)).toBe(true);
     });
   });
 
@@ -358,6 +381,101 @@ describe("utils/layout", () => {
       const dist01 = Math.hypot(out[0].x - out[1].x, out[0].y - out[1].y);
       const dist02 = Math.hypot(out[0].x - out[2].x, out[0].y - out[2].y);
       expect(dist01).toBeLessThan(dist02);
+    });
+  });
+
+  describe("rotateStartLeft", () => {
+    it("makes start state the leftmost", () => {
+      // Start at right side of a triangle
+      const positions = [
+        { x: 100, y: 0 }, // state 0 (start) — on the right
+        { x: -50, y: 87 }, // state 1
+        { x: -50, y: -87 }, // state 2
+      ];
+      rotateStartLeft(positions, [0, 1, 2], 0);
+
+      // After rotation, state 0 should be leftmost
+      expect(positions[0].x).toBeLessThanOrEqual(positions[1].x);
+      expect(positions[0].x).toBeLessThanOrEqual(positions[2].x);
+    });
+
+    it("is a no-op for single state", () => {
+      const positions = [{ x: 50, y: 30 }];
+      rotateStartLeft(positions, [0], 0);
+      expect(positions[0].x).toBe(50);
+      expect(positions[0].y).toBe(30);
+    });
+
+    it("preserves relative distances between states", () => {
+      const positions = [
+        { x: 100, y: 0 },
+        { x: -50, y: 87 },
+        { x: -50, y: -87 },
+      ];
+      const distBefore = Math.hypot(
+        positions[0].x - positions[1].x,
+        positions[0].y - positions[1].y,
+      );
+
+      rotateStartLeft(positions, [0, 1, 2], 0);
+
+      const distAfter = Math.hypot(
+        positions[0].x - positions[1].x,
+        positions[0].y - positions[1].y,
+      );
+      expect(distAfter).toBeCloseTo(distBefore, 5);
+    });
+  });
+
+  describe("scaleToTargetSpacing", () => {
+    it("scales positions to match target average edge length", () => {
+      const positions = [
+        { x: 0, y: 0 },
+        { x: 50, y: 0 },
+        { x: 100, y: 0 },
+      ];
+      const adj = [new Set([1]), new Set([2]), new Set<number>()];
+      scaleToTargetSpacing(positions, [0, 1, 2], adj, 150);
+
+      const d01 = Math.hypot(positions[0].x - positions[1].x, positions[0].y - positions[1].y);
+      const d12 = Math.hypot(positions[1].x - positions[2].x, positions[1].y - positions[2].y);
+      const avg = (d01 + d12) / 2;
+      expect(avg).toBeCloseTo(150, 0);
+    });
+
+    it("is a no-op when there are no edges", () => {
+      const positions = [
+        { x: 10, y: 20 },
+        { x: 30, y: 40 },
+      ];
+      const adj = [new Set<number>(), new Set<number>()];
+      scaleToTargetSpacing(positions, [0, 1], adj, 150);
+
+      // Positions unchanged
+      expect(positions[0]).toEqual({ x: 10, y: 20 });
+      expect(positions[1]).toEqual({ x: 30, y: 40 });
+    });
+
+    it("preserves layout topology (relative angles unchanged)", () => {
+      const positions = [
+        { x: 0, y: 0 },
+        { x: 30, y: 40 }, // angle ~53°
+        { x: 60, y: 0 },
+      ];
+      const adj = [new Set([1]), new Set([2]), new Set<number>()];
+
+      const angleBefore = Math.atan2(
+        positions[1].y - positions[0].y,
+        positions[1].x - positions[0].x,
+      );
+
+      scaleToTargetSpacing(positions, [0, 1, 2], adj, 150);
+
+      const angleAfter = Math.atan2(
+        positions[1].y - positions[0].y,
+        positions[1].x - positions[0].x,
+      );
+      expect(angleAfter).toBeCloseTo(angleBefore, 5);
     });
   });
 });
