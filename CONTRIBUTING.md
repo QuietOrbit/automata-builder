@@ -2,6 +2,8 @@
 
 Thanks for your interest in contributing! This guide covers the workflow and conventions used in this project.
 
+Before diving in, check out the **[Developer Wiki](https://github.com/QuietOrbit/automata-builder/wiki)** for documentation on the architecture, algorithms, and key systems.
+
 ## Getting Started
 
 ```bash
@@ -91,6 +93,8 @@ ESLint enforces the project's style conventions automatically. Run `npm run lint
 
 - **Event delegation** — Canvas interactions go through the canvas wrapper component
 - **Computed alphabet** — Never store the alphabet directly. It's always derived from transition symbols
+
+See the wiki's [Architecture Overview](https://github.com/QuietOrbit/automata-builder/wiki/Architecture-Overview) for how stores, composables, and components connect.
 
 ## Reporting Issues
 

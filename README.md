@@ -70,6 +70,8 @@ utils/            Pure functions (geometry, layout, export, ID generation)
 types/            TypeScript interfaces and enums
 ```
 
+For a deeper dive into how the algorithms and systems work, see the **[Developer Wiki](https://github.com/QuietOrbit/automata-builder/wiki)**.
+
 ## Deployment
 
 GitHub Actions (`.github/workflows/deploy.yml`) runs `nuxt generate` and deploys to GitHub Pages on push to `main`.
